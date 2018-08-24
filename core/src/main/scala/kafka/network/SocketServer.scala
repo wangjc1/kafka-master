@@ -70,7 +70,6 @@ class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time
   private val memoryPool = if (config.queuedMaxBytes > 0) new SimpleMemoryPool(config.queuedMaxBytes, config.socketRequestMaxBytes, false, memoryPoolSensor) else MemoryPool.NONE
   val requestChannel = new RequestChannel(maxQueuedRequests)
   private val processors = new ConcurrentHashMap[Int, Processor]()
-  private var nextProcessorId = 0
 
   private[network] val acceptors = new ConcurrentHashMap[EndPoint, Acceptor]()
   private var connectionQuotas: ConnectionQuotas = _
@@ -158,6 +157,7 @@ class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time
     val listenerName = endpoint.listenerName
     val securityProtocol = endpoint.securityProtocol
     val listenerProcessors = new ArrayBuffer[Processor]()
+    var nextProcessorId = 0
 
     for (_ <- 0 until newProcessorsPerListener) {
       val processor = newProcessor(nextProcessorId, connectionQuotas, listenerName, securityProtocol, memoryPool)
@@ -580,9 +580,11 @@ private[kafka] class Processor(val id: Int,
       while (isRunning) {
         try {
           // setup any new connections that have been queued up
+          // 给客户端连接(newConnections)绑定Selector，并注册SelectionKey.OP_READ事件
           configureNewConnections()
           // register any new responses for writing
           processNewResponses()
+          // 如果没有任何事件，就阻塞300毫秒
           poll()
           processCompletedReceives()
           processCompletedSends()

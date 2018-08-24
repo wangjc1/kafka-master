@@ -52,7 +52,8 @@ import scala.util.control.ControlThrowable
 
 class SocketServerTest extends JUnitSuite {
   val props = TestUtils.createBrokerConfig(0, TestUtils.MockZkConnect, port = 0)
-  props.put("listeners", "PLAINTEXT://localhost:8888,SSL://localhost:8889")
+  //props.put("listeners", "PLAINTEXT://localhost:8888,SSL://localhost:8889")
+  props.put("listeners", "PLAINTEXT://localhost:0")
   props.put("num.network.threads", "1")
   props.put("socket.send.buffer.bytes", "300000")
   props.put("socket.receive.buffer.bytes", "300000")
@@ -172,6 +173,21 @@ class SocketServerTest extends JUnitSuite {
     val serializedBytes = new Array[Byte](byteBuffer.remaining)
     byteBuffer.get(serializedBytes)
     serializedBytes
+  }
+
+  @Test
+  def nioRequestTest() {
+    val plainSocket = connect(protocol = SecurityProtocol.PLAINTEXT)
+
+    val buffer = "Hello Kafka".getBytes
+
+    val os = new DataOutputStream(plainSocket.getOutputStream)
+    //os.writeBytes("Hello Kafka")
+    os.writeInt(buffer.length)
+    os.write(buffer)
+    os.flush()
+    //processRequest(server.requestChannel)
+    //receiveResponse(plainSocket)
   }
 
   @Test

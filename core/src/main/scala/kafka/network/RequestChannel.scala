@@ -291,7 +291,7 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
   def addProcessor(processor: Processor): Unit = {
     if (processors.putIfAbsent(processor.id, processor) != null)
       warn(s"Unexpected processor with processorId ${processor.id}")
-
+    //给Metrics指标工具添加一个瞬时状态
     newGauge(ResponseQueueSizeMetric,
       new Gauge[Int] {
         def value = processor.responseQueueSize
@@ -339,7 +339,7 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
 
   /** Get the next request or block until specified time has elapsed */
   def receiveRequest(timeout: Long): RequestChannel.BaseRequest =
-    requestQueue.poll(timeout, TimeUnit.MILLISECONDS)
+    requestQueue.poll(timeout, TimeUnit.MILLISECONDS) //如果超时返回null
 
   /** Get the next request or block until there is one */
   def receiveRequest(): RequestChannel.BaseRequest =
