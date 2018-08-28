@@ -16,18 +16,11 @@
  */
 package org.apache.kafka.clients.producer;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.MockClient;
 import org.apache.kafka.clients.producer.internals.ProducerInterceptors;
-import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.Node;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.*;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.InvalidTopicException;
@@ -41,12 +34,7 @@ import org.apache.kafka.common.serialization.ExtendedSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.test.MockMetricsReporter;
-import org.apache.kafka.test.MockPartitioner;
-import org.apache.kafka.test.MockProducerInterceptor;
-import org.apache.kafka.test.MockSerializer;
-import org.apache.kafka.test.TestCondition;
-import org.apache.kafka.test.TestUtils;
+import org.apache.kafka.test.*;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,21 +45,14 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareOnlyThisForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore("javax.management.*")
@@ -84,6 +65,7 @@ public class KafkaProducerTest {
         new KafkaProducer<>(producerProps, new ByteArraySerializer(), new ByteArraySerializer()).close();
     }
 
+    //Missing required configuration "key.serializer" which has no default value.
     @Test(expected = ConfigException.class)
     public void testNoSerializerProvided() {
         Properties producerProps = new Properties();
