@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * 消息发送测试
+ * 配置：config/server.properties --override num.partitions=1  --override replication-factor=2 --override log.segment.bytes=1024 --override log.index.size.max.bytes=1024
  */
 public class ProducerTest {
 
@@ -29,15 +30,16 @@ public class ProducerTest {
 
     @Test
     public void testSyncSend() {
-        try {
-            int messageNo = 1;
+        for(int messageNo=0;messageNo<10;messageNo++){
             String messageStr = "Message_" + messageNo;
-            producer.send(new ProducerRecord<>(topic,
-                    messageNo,
-                    messageStr)).get();
-            System.out.println("Sent message: (" + messageNo + ", " + messageStr + ")");
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            try {
+                producer.send(new ProducerRecord<>(topic,
+                        messageNo,
+                        messageStr)).get();
+                System.out.println("Sent message: (" + messageNo + ", " + messageStr + ")");
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
         }
     }
 
