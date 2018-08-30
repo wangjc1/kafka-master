@@ -1,4 +1,4 @@
-package org.apache.kafka;
+package org.apache.kafka.my;
 
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.IntegerSerializer;
@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 public class ProducerTest {
 
     Producer producer = null;
-    String topic = "test-topic-01";
+    String topic = "test-topic-07";
 
     @Before
     public void init() {
