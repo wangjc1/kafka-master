@@ -140,6 +140,7 @@ class ZooKeeperClient(connectString: String,
         inFlightRequests.acquire()
         try {
           inReadLock(initializationLock) {
+            //发送zk请求
             send(request) { response =>
               responseQueue.add(response)
               inFlightRequests.release()
@@ -165,6 +166,7 @@ class ZooKeeperClient(connectString: String,
     def responseMetadata(sendTimeMs: Long) = new ResponseMetadata(sendTimeMs, receivedTimeMs = time.hiResClockMs())
 
     val sendTimeMs = time.hiResClockMs()
+    //不同的请求，执行不同的操作
     request match {
       case ExistsRequest(path, ctx) =>
         zooKeeper.exists(path, shouldWatch(request), new StatCallback {
@@ -444,6 +446,7 @@ sealed trait AsyncRequest {
    * This type member allows us to define methods that take requests and return responses with the correct types.
    * See ``ZooKeeperClient.handleRequests`` for example.
    */
+  //限定Response必须是AsyncResponse的子类，type 定义一个抽象类型，子类中必须定义具体类型
   type Response <: AsyncResponse
   def path: String
   def ctx: Option[Any]

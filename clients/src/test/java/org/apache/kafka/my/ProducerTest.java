@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 public class ProducerTest {
 
     Producer producer = null;
-    String topic = "test-topic-07";
+    String topic = "test-topic-08";
 
     @Before
     public void init() {

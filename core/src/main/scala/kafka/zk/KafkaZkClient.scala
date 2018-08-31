@@ -1446,7 +1446,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
       }
     }
 
+    //构造zk请求对象，返回类型是动态的Req#Response
     val createRequest = CreateRequest(path, data, acls(path), CreateMode.PERSISTENT)
+    //zk中创建路径请求，动态返回Req#Response
     var createResponse = retryRequestUntilConnected(createRequest)
 
     if (throwIfPathExists && createResponse.resultCode == Code.NODEEXISTS) {
@@ -1486,6 +1488,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
 
   private def acls(path: String): Seq[ACL] = ZkData.defaultAcls(isSecure, path)
 
+  /**
+    * 参考《快学scala》 18.2
+    */
   private def retryRequestUntilConnected[Req <: AsyncRequest](request: Req): Req#Response = {
     retryRequestsUntilConnected(Seq(request)).head
   }
