@@ -104,6 +104,14 @@ public class SelectorTest {
         return SecurityProtocol.PLAINTEXT;
     }
 
+    @Test
+    public void testConnectAndSend() throws Exception {
+        final String node = "0";
+        // reconnect and do another request
+        blockingConnect(node);
+        assertEquals("hello", blockingRequest(node, "hello"));
+    }
+
     /**
      * Validate that when the server disconnects, a client send ends up with that node in the disconnected list.
      */
@@ -628,6 +636,8 @@ public class SelectorTest {
 
     private String blockingRequest(String node, String s) throws IOException {
         selector.send(createSend(node, s));
+        //1. 调用selector.select(timeout)，让selector阻塞1秒后超时唤醒
+        //2. 轮询seleotor上的channel，是否有注册的事件到达
         selector.poll(1000L);
         while (true) {
             selector.poll(1000L);
