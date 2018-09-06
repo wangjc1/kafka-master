@@ -94,18 +94,23 @@ class ControllerEventManager(controllerId: Int, rateAndTimeMetrics: Map[Controll
     put(event)
   }
 
+  /**
+    * ShutdownableThread方法是一个线程模板类，子类实现方法doWork后会被线程调用
+    */
   class ControllerEventThread(name: String) extends ShutdownableThread(name = name, isInterruptible = false) {
     logIdent = s"[ControllerEventThread controllerId=$controllerId] "
 
     override def doWork(): Unit = {
       queue.take() match {
         case KafkaController.ShutdownEventThread => initiateShutdown()
+        //任务类（是ControllerEvent的子类）只要不是ShutdownEventThread 类，都走下面的case
         case controllerEvent =>
           _state = controllerEvent.state
 
           eventQueueTimeHist.update(time.milliseconds() - controllerEvent.enqueueTimeMs)
 
           try {
+            //time()方法最终会启动一个RequestSendThread的线程，此类位于ControllerChannelManager中
             rateAndTimeMetrics(state).time {
               controllerEvent.process()
             }

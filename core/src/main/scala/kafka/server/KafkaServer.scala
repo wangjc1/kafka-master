@@ -265,6 +265,7 @@ class KafkaServer(val config: KafkaConfig, time: Time = Time.SYSTEM, threadNameP
 
         /* start kafka controller */
         kafkaController = new KafkaController(config, zkClient, time, metrics, brokerInfo, tokenManager, threadNamePrefix)
+        //发送一请求，ControllerEventManager.doWork() => ControllerChannelManager.RequestSendThread.doWork() => NetworkClientUtils.sendAndReceive(...)
         kafkaController.startup()
 
         adminManager = new AdminManager(config, metrics, metadataCache, zkClient)

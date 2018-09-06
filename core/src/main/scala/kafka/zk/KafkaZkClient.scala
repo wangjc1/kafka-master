@@ -1497,6 +1497,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   private def retryRequestsUntilConnected[Req <: AsyncRequest](requests: Seq[Req]): Seq[Req#Response] = {
+    // _*将requests转化为参数序列
     val remainingRequests = ArrayBuffer(requests: _*)
     val responses = new ArrayBuffer[Req#Response]
     while (remainingRequests.nonEmpty) {
