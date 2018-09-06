@@ -730,6 +730,7 @@ public final class Utils {
 
             @Override
             public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
+                System.gc();
                 Files.delete(path);
                 return FileVisitResult.CONTINUE;
             }

@@ -28,6 +28,30 @@ import org.apache.kafka.common.utils.Time
 
 import scala.collection._
 
+/**
+  * 主要处理Controller和Broker、Topic、Partition之间的事件,主要包含：
+  * case object ShutdownEventThread extends ControllerEvent
+  * case object AutoPreferredReplicaLeaderElection extends ControllerEvent
+  * case object UncleanLeaderElectionEnable extends ControllerEvent
+  * case class ControlledShutdown(id: Int, controlledShutdownCallback: Try[Set[TopicPartition]] => Unit) extends ControllerEvent
+  * case class LeaderAndIsrResponseReceived(LeaderAndIsrResponseObj: AbstractResponse, brokerId: Int) extends ControllerEvent
+  * case class TopicDeletionStopReplicaResponseReceived(stopReplicaResponseObj: AbstractResponse, replicaId: Int) extends ControllerEvent
+  * case object Startup extends ControllerEvent 启动后选举事件
+  * case object BrokerChange extends ControllerEvent
+  * case class BrokerModifications(brokerId: Int) extends ControllerEvent
+  * case object TopicChange extends ControllerEvent
+  * case object LogDirEventNotification extends ControllerEvent
+  * case class PartitionModifications(topic: String) extends ControllerEvent
+  * case object TopicDeletion extends ControllerEvent
+  * case object PartitionReassignment extends ControllerEvent
+  * case class PartitionReassignmentIsrChange(partition: TopicPartition) extends ControllerEvent
+  * case object IsrChangeNotification extends ControllerEvent
+  * case object PreferredReplicaLeaderElection extends ControllerEvent
+  * case object ControllerChange extends ControllerEvent
+  * case object Reelect extends ControllerEvent
+  * case object RegisterBrokerAndReelect extends ControllerEvent
+  * class Expire extends ControllerEvent
+  */
 object ControllerEventManager {
   val ControllerEventThreadName = "controller-event-thread"
 }
@@ -89,6 +113,7 @@ class ControllerEventManager(controllerId: Int, rateAndTimeMetrics: Map[Controll
             case e: Throwable => error(s"Error processing event $controllerEvent", e)
           }
 
+          //此参数为一个高级函数，现在传入了一个参数
           try eventProcessedListener(controllerEvent)
           catch {
             case e: Throwable => error(s"Error while invoking listener for processed event $controllerEvent", e)

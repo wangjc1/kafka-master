@@ -53,8 +53,8 @@ class ControllerEventManagerTest {
   private def check(metricName: String, controllerState: ControllerState, process: () => Unit): Unit = {
     val controllerStats = new ControllerStats
     val eventProcessedListenerCount = new AtomicInteger
-    controllerEventManager = new ControllerEventManager(0, controllerStats.rateAndTimeMetrics,
-      _ => eventProcessedListenerCount.incrementAndGet)
+    //最后一个参数_ => eventProc..里面的“_”表示现在不传入任何参数
+    controllerEventManager = new ControllerEventManager(0, controllerStats.rateAndTimeMetrics, _ => eventProcessedListenerCount.incrementAndGet)
     controllerEventManager.start()
 
     val initialTimerCount = timer(metricName).count

@@ -40,7 +40,10 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 import scala.collection.{Set, mutable}
 
-
+/**
+  * ControllerChannelManager用来管理与其他所有的Broker Node的网络连接和请求发送等
+  * 会为每个Broker Node连接创建一个线程
+  */
 object ControllerChannelManager {
   val QueueSizeMetricName = "QueueSize"
   val RequestRateAndQueueTimeMetricName = "RequestRateAndQueueTimeMs"
@@ -200,6 +203,9 @@ class ControllerChannelManager(controllerContext: ControllerContext, config: Kaf
 case class QueueItem(apiKey: ApiKeys, request: AbstractRequest.Builder[_ <: AbstractRequest],
                      callback: AbstractResponse => Unit, enqueueTimeMs: Long)
 
+/**
+  *  继承自ShutdownableThread，回调子类doWork方法
+  */
 class RequestSendThread(val controllerId: Int,
                         val controllerContext: ControllerContext,
                         val queue: BlockingQueue[QueueItem],

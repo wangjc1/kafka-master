@@ -82,6 +82,7 @@ class ZooKeeperClient(connectString: String,
   }
 
   info(s"Initializing a new session to $connectString.")
+  // zk客户端，用于连接zk服务端 ，@see EmbeddedZookeeper 用于本地测试的zk服务端
   // Fail-fast if there's an error during construction (so don't call initialize, which retries forever)
   @volatile private var zooKeeper = new ZooKeeper(connectString, sessionTimeoutMs, ZooKeeperClientWatcher)
 

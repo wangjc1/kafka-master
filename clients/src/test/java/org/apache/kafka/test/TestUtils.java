@@ -168,37 +168,15 @@ public class TestUtils {
             @Override
             public void run() {
                 try {
+                    System.gc();
                     Utils.delete(file);
                 } catch (IOException e) {
-                    //log.error("Error deleting {}", file.getAbsolutePath(), e);
-                    log.error("Call force delete file {}", file.getAbsolutePath());
-                    forceDelete(file);
+                    log.error("Error deleting {}", file.getAbsolutePath(), e);
                 }
             }
         });
 
         return file;
-    }
-
-    /**
-     * 解决window系统删除文件失败问题
-     */
-    private static void forceDelete(File file){
-        try {
-            String cmd = "cmd /c rd "+file+" /s/q";
-            Runtime rt = Runtime.getRuntime(); // 获取运行时系统
-            Process proc = rt.exec(cmd); // 执行命令
-            InputStream stderr =  proc.getInputStream(); // 获取输入流
-            InputStreamReader isr = new InputStreamReader(stderr,"gbk");
-            BufferedReader br = new BufferedReader(isr);
-            String line = null;
-            while ((line = br.readLine()) != null) { // 打印出命令执行的结果
-                line += line;
-            }
-            log.info(line);
-        } catch (Throwable e) {
-            log.error("Force delete file Error {}", file.getAbsolutePath(),e);
-        }
     }
 
     public static Properties producerConfig(final String bootstrapServers,

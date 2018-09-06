@@ -40,6 +40,9 @@ import org.apache.zookeeper.KeeperException.{Code, NodeExistsException}
 import scala.collection._
 import scala.util.Try
 
+/**
+  * 一个KafkaServer 代表一个Broker服务，同时启动一个Controller，用来管理Topic和Partition
+  */
 object KafkaController extends Logging {
   val InitialControllerEpoch = 1
   val InitialControllerEpochZkVersion = 1
@@ -1194,6 +1197,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     zkClient.deleteController()
   }
 
+  /**
+    * Controller选举，从Controller里面选举出一个作为Leader，管理Broker、Topic
+    */
   private def elect(): Unit = {
     val timestamp = time.milliseconds
     activeControllerId = zkClient.getControllerId.getOrElse(-1)

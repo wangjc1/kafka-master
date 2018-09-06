@@ -41,6 +41,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Seq, mutable}
 
 /**
+  * 基于ZooKeeperClient，包装一个适合Kafka业务的zk客户端
  * Provides higher level Kafka-specific operations on top of the pipelined [[kafka.zookeeper.ZooKeeperClient]].
  *
  * This performs better than [[kafka.utils.ZkUtils]] and should replace it completely, eventually.
