@@ -147,7 +147,7 @@ object TestUtils extends Logging {
    *
    * Note that if `interBrokerSecurityProtocol` is defined, the listener for the `SecurityProtocol` will be enabled.
    */
-  def createBrokerConfigs(numConfigs: Int,
+  def createBrokerConfigs(numConfigs: Int,//broker的数量
     zkConnect: String,
     enableControlledShutdown: Boolean = true,
     enableDeleteTopic: Boolean = false,
@@ -162,6 +162,7 @@ object TestUtils extends Logging {
     logDirCount: Int = 1,
     enableToken: Boolean = false): Seq[Properties] = {
     (0 until numConfigs).map { node =>
+      //构建一个broker配置
       createBrokerConfig(node, zkConnect, enableControlledShutdown, enableDeleteTopic, RandomPort,
         interBrokerSecurityProtocol, trustStoreFile, saslProperties, enablePlaintext = enablePlaintext, enableSsl = enableSsl,
         enableSaslPlaintext = enableSaslPlaintext, enableSaslSsl = enableSaslSsl, rack = rackInfo.get(node), logDirCount = logDirCount, enableToken = enableToken)

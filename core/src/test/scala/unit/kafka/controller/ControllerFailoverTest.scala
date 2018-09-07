@@ -37,8 +37,10 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
   val topic = "topic1"
   val overridingProps = new Properties()
   val metrics = new Metrics()
+  // 覆盖缺省配置的项
   overridingProps.put(KafkaConfig.NumPartitionsProp, numParts.toString)
 
+  //TestUtils.createBrokerConfigs用来创建一个Broker的配置，然后调用KafkaConfig.fromProps覆盖默认配置项
   override def generateConfigs = TestUtils.createBrokerConfigs(numNodes, zkConnect)
     .map(KafkaConfig.fromProps(_, overridingProps))
 

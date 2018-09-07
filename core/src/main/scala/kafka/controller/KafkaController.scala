@@ -91,6 +91,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   private val isrChangeNotificationHandler = new IsrChangeNotificationHandler(this, eventManager)
   private val logDirEventNotificationHandler = new LogDirEventNotificationHandler(this, eventManager)
 
+  // 竞选成功的Controller的BrokerID(在ZK中/controller目录下创建主Controller的信息)
   @volatile private var activeControllerId = -1
   @volatile private var offlinePartitionCount = 0
   @volatile private var preferredReplicaImbalanceCount = 0
@@ -169,6 +170,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
         expireEvent.waitUntilProcessingStarted()
       }
     })
+    //每当Broker服务启动时，发送一个选举事件，其关联的Controller参与选举
     eventManager.put(Startup)
     eventManager.start()
   }
@@ -1148,6 +1150,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
 
     override def process(): Unit = {
       zkClient.registerZNodeChangeHandlerAndCheckExistence(controllerChangeHandler)
+      //Controller选举会调用onControllerFailover()方法
       elect()
     }
 
@@ -1202,12 +1205,14 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     */
   private def elect(): Unit = {
     val timestamp = time.milliseconds
+    // 从ZK的/controller目录中获取leader broker 的 id
     activeControllerId = zkClient.getControllerId.getOrElse(-1)
     /*
      * We can get here during the initial startup and the handleDeleted ZK callback. Because of the potential race condition,
      * it's possible that the controller has already been elected when we get here. This check will prevent the following
      * createEphemeralPath method from getting into an infinite loop if this broker is already the controller.
      */
+    //activeControllerId初始值为-1，当不为-1时，表示已经选举完成，直接返回
     if (activeControllerId != -1) {
       debug(s"Broker $activeControllerId has been elected as the controller, so stopping the election process.")
       return
