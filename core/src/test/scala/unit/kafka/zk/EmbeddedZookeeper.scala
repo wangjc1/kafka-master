@@ -38,10 +38,10 @@ class EmbeddedZookeeper() extends Logging {
 
   val snapshotDir = TestUtils.tempDir()
   val logDir = TestUtils.tempDir()
-  val tickTime = 500
+  val tickTime = 50000 //500
   val zookeeper = new ZooKeeperServer(snapshotDir, logDir, tickTime)
   val factory = new NIOServerCnxnFactory()
-  private val addr = new InetSocketAddress("127.0.0.1", TestUtils.RandomPort)
+  private val addr = new InetSocketAddress("127.0.0.1",2181 /*TestUtils.RandomPort*/)
   factory.configure(addr, 0)
   factory.startup(zookeeper)
   val port = zookeeper.getClientPort
@@ -52,7 +52,7 @@ class EmbeddedZookeeper() extends Logging {
 
     def isDown(): Boolean = {
       try {
-        ZkFourLetterWords.sendStat("127.0.0.1", port, 3000)
+        ZkFourLetterWords.sendStat("127.0.0.1", port, 300000) //3000
         false
       } catch { case _: Throwable => true }
     }

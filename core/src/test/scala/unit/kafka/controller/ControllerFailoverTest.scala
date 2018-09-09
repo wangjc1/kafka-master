@@ -46,8 +46,10 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
 
   @After
   override def tearDown() {
+    /* 注释掉：用ZK客户端ZooInspector.jar查看里面的内容
     super.tearDown()
     this.metrics.close()
+    */
   }
 
   /**
@@ -68,6 +70,7 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
       s"Partition $topicPartition did not transition to online state")
 
     // Wait until we have verified that we have resigned
+    // 模拟发送BrokerChange事件
     val latch = new CountDownLatch(1)
     @volatile var exceptionThrown: Option[Throwable] = None
     val illegalStateEvent = ControllerTestUtils.createMockControllerEvent(ControllerState.BrokerChange, { () =>
@@ -78,6 +81,7 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
       latch.await()
     })
     initialController.eventManager.put(illegalStateEvent)
+
     // Check that we have shutdown the scheduler (via onControllerResigned)
     TestUtils.waitUntilTrue(() => !initialController.kafkaScheduler.isStarted, "Scheduler was not shutdown")
     TestUtils.waitUntilTrue(() => !initialController.isActive, "Controller did not become inactive")
@@ -92,5 +96,8 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
       }
     }, "Failed to find controller")
 
+    //让主线程一直跑着，查看ZK内容
+    Thread.sleep(Integer.MAX_VALUE);
   }
+
 }

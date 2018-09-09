@@ -80,6 +80,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   val replicaStateMachine = new ReplicaStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
   val partitionStateMachine = new PartitionStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
 
+  //用来发送事件给eventManager
   private val controllerChangeHandler = new ControllerChangeHandler(this, eventManager)
   private val brokerChangeHandler = new BrokerChangeHandler(this, eventManager)
   private val brokerModificationsHandlers: mutable.Map[Int, BrokerModificationsHandler] = mutable.Map.empty
@@ -170,8 +171,10 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
         expireEvent.waitUntilProcessingStarted()
       }
     })
-    //每当Broker服务启动时，发送一个选举事件，其关联的Controller参与选举
+    // 每当Broker服务启动时，发送一个选举事件
+    // Startup实现了ControllerEvent接口，并实现了process()方法，这里添加Startup事件到队列中
     eventManager.put(Startup)
+    // ControllerEventManager启动一个线程ControllerEventThread，会不停地从队列中获取ControllerEvent来处理
     eventManager.start()
   }
 
@@ -1149,6 +1152,8 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     def state = ControllerState.ControllerChange
 
     override def process(): Unit = {
+      //先往ZK上注册事件，同时添加事件到evenManager的队列中
+      //从ControllerChangeHandler的回调方法可以看出回调方法中把事件添加到了eventManager的队列中
       zkClient.registerZNodeChangeHandlerAndCheckExistence(controllerChangeHandler)
       //Controller选举会调用onControllerFailover()方法
       elect()

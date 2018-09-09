@@ -1542,6 +1542,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
       val createResponse = retryRequestUntilConnected(createRequest)
       createResponse.resultCode match {
         case code@ Code.OK => code
+          //
         case Code.NODEEXISTS => getAfterNodeExists()
         case code =>
           error(s"Error while creating ephemeral at $path with return code: $code")

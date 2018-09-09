@@ -737,6 +737,7 @@ public final class Utils {
 
             @Override
             public FileVisitResult postVisitDirectory(Path path, IOException exc) throws IOException {
+                System.gc();
                 Files.delete(path);
                 return FileVisitResult.CONTINUE;
             }
