@@ -547,6 +547,7 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
       requestThread.start()
 
       sendCompleteSemaphore.acquire() // Wait for request thread to start processing requests
+      //模拟zk session expired
       val anotherZkClient = createZooKeeperClientToTriggerSessionExpiry(zooKeeperClient.currentZooKeeper)
       sendSemaphore.release(maxInflightRequests) // Resume a few more sends which may fail
       anotherZkClient.close()
@@ -579,6 +580,27 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
       responseExecutor.shutdownNow()
     }
     assertFalse("Expiry executor not shutdown", zooKeeperClient.expiryScheduler.isStarted)
+  }
+
+  /**
+    *  当信号量开始是0，之后每release()一次，会多一根信号量
+    */
+  @Test
+  def testSemaphore(): Unit = {
+    val sendSemaphore = new Semaphore(0)
+
+    var t = new Thread {
+      override def run(): Unit = {
+        sendSemaphore.acquire()
+        println("do something...")
+      }
+    }
+    t.start()
+
+    Thread.sleep(500)
+    sendSemaphore.release()
+
+    Thread.sleep(Integer.MAX_VALUE)
   }
 
   @Test
