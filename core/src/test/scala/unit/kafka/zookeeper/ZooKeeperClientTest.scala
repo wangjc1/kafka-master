@@ -451,7 +451,9 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
         override def run(): Unit = {
           while (running.get()) {
             val responses = zooKeeperClient.handleRequests(requests)
+            //dropWhile删除前几个符合条件的元素，还有个方法drop(n:Int)是删除前几个元素
             val suffix = responses.dropWhile(response => response.resultCode != Code.CONNECTIONLOSS)
+            //如果suffix集合里的其中一个响应代码不是Code.CONNECTIONLOSS
             if (!suffix.forall(response => response.resultCode == Code.CONNECTIONLOSS))
               responses.foreach(unexpectedResponses.add)
             if (!unexpectedResponses.isEmpty || suffix.nonEmpty)
@@ -502,18 +504,19 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
     val sendSize = maxInflightRequests * 5
     @volatile var resultCodes: Seq[Code] = null
     val stateChanges = new ConcurrentLinkedQueue[String]()
+    //匿名子类，重写send方法
     val zooKeeperClient = new ZooKeeperClient(zkConnect, zkSessionTimeout, zkConnectionTimeout, maxInflightRequests,
       time, "testGroupType", "testGroupName") {
       override def send[Req <: AsyncRequest](request: Req)(processResponse: Req#Response => Unit): Unit = {
-        super.send(request)( response => {
-          responseExecutor.submit(new Runnable {
-            override def run(): Unit = {
-              sendCompleteSemaphore.release()
-              sendSemaphore.acquire()
-              processResponse(response)
-            }
+          super.send(request)( response => {
+            responseExecutor.submit(new Runnable {
+              override def run(): Unit = {
+                sendCompleteSemaphore.release()
+                sendSemaphore.acquire()
+                processResponse(response)
+              }
+            })
           })
-        })
       }
     }
     try {
@@ -528,6 +531,7 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
           stateChanges.add("beforeInitializingSession")
           sendSemaphore.release(sendSize) // Resume remaining sends
         }
+        //
         private def verifyHandlerThread(): Unit = {
           val threadName = Thread.currentThread.getName
           assertTrue(s"Unexpected thread + $threadName", threadName.startsWith(zooKeeperClient.expiryScheduler.threadNamePrefix))
@@ -541,8 +545,8 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
         }
       }
       requestThread.start()
-      sendCompleteSemaphore.acquire() // Wait for request thread to start processing requests
 
+      sendCompleteSemaphore.acquire() // Wait for request thread to start processing requests
       val anotherZkClient = createZooKeeperClientToTriggerSessionExpiry(zooKeeperClient.currentZooKeeper)
       sendSemaphore.release(maxInflightRequests) // Resume a few more sends which may fail
       anotherZkClient.close()
@@ -558,9 +562,13 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
       assertEquals(resultCodes.size, sendSize)
       val connectionLostCount = resultCodes.count(_ == Code.CONNECTIONLOSS)
       assertTrue(s"Unexpected connection lost requests $resultCodes", connectionLostCount <= maxInflightRequests)
+
+      //会话超时连接数量
       val expiredCount = resultCodes.count(_ == Code.SESSIONEXPIRED)
       assertTrue(s"Unexpected session expired requests $resultCodes", expiredCount <= maxInflightRequests)
       assertTrue(s"No connection lost or expired requests $resultCodes", connectionLostCount + expiredCount > 0)
+
+      //开始连接和末尾连接响应的都是NONODE
       assertEquals(Code.NONODE, resultCodes.head)
       assertEquals(Code.NONODE, resultCodes.last)
       assertTrue(s"Unexpected result code $resultCodes",

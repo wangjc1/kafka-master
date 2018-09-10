@@ -59,6 +59,7 @@ class ZooKeeperClient(connectString: String,
   private val zNodeChildChangeHandlers = new ConcurrentHashMap[String, ZNodeChildChangeHandler]().asScala
   private val inFlightRequests = new Semaphore(maxInFlightRequests)
   private val stateChangeHandlers = new ConcurrentHashMap[String, StateChangeHandler]().asScala
+  //会话超时重连调度器
   private[zookeeper] val expiryScheduler = new KafkaScheduler(threads = 1, "zk-session-expiry-handler")
 
   private val metricNames = Set[String]()
@@ -83,6 +84,7 @@ class ZooKeeperClient(connectString: String,
 
   info(s"Initializing a new session to $connectString.")
   // zk客户端，用于连接zk服务端 ，@see EmbeddedZookeeper 用于本地测试的zk服务端
+  // 在new ZooKeeper()客户端时，同时就会连接zk服务器
   // Fail-fast if there's an error during construction (so don't call initialize, which retries forever)
   @volatile private var zooKeeper = new ZooKeeper(connectString, sessionTimeoutMs, ZooKeeperClientWatcher)
 
@@ -223,6 +225,12 @@ class ZooKeeperClient(connectString: String,
     waitUntilConnected(Long.MaxValue, TimeUnit.MILLISECONDS)
   }
 
+  /**
+    * 等待直到连接ZK服务器成功，这里用到了ReentrantLock的Condition：isConnectedOrExpiredCondition
+    * 当没有连接成功一直阻塞，当连接成功后通知ZK监视器，在回调方法中signalAll()方法唤醒
+    * @param timeout
+    * @param timeUnit
+    */
   private def waitUntilConnected(timeout: Long, timeUnit: TimeUnit): Unit = {
     info("Waiting until connected.")
     var nanos = timeUnit.toNanos(timeout)
@@ -402,13 +410,17 @@ class ZooKeeperClient(connectString: String,
         case None =>
           val state = event.getState
           stateToMeterMap.get(state).foreach(_.mark())
+          //inLock相当于try{isConnectedOrExpiredLock.lock()}finally{isConnectedOrExpiredLock.unlock()}
+          //唤醒连接等待成功阻塞
           inLock(isConnectedOrExpiredLock) {
             isConnectedOrExpiredCondition.signalAll()
           }
           if (state == KeeperState.AuthFailed) {
             error("Auth failed.")
             stateChangeHandlers.values.foreach(_.onAuthFailure())
-          } else if (state == KeeperState.Expired) {
+          }
+          //zk会话过期，调用expiryScheduler调度器重新初始化zk客户端
+          else if (state == KeeperState.Expired) {
             scheduleSessionExpiryHandler()
           }
         case Some(path) =>
