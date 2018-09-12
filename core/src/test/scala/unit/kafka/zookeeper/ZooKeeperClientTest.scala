@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets
 import java.util
 import java.util.UUID
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDownLatch, Executors, Semaphore, TimeUnit}
+import java.util.concurrent._
 
 import com.yammer.metrics.Metrics
 import com.yammer.metrics.core.{Gauge, Meter, MetricName}
@@ -30,7 +30,7 @@ import org.apache.kafka.common.utils.Time
 import org.apache.zookeeper.KeeperException.{Code, NoNodeException}
 import org.apache.zookeeper.Watcher.Event.{EventType, KeeperState}
 import org.apache.zookeeper.ZooKeeper.States
-import org.apache.zookeeper.{CreateMode, WatchedEvent, ZooDefs}
+import org.apache.zookeeper._
 import org.junit.Assert.{assertArrayEquals, assertEquals, assertFalse, assertTrue}
 import org.junit.{After, Before, Test}
 
@@ -582,8 +582,11 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
     assertFalse("Expiry executor not shutdown", zooKeeperClient.expiryScheduler.isStarted)
   }
 
+
+
   /**
     *  当信号量开始是0，之后每release()一次，会多一根信号量
+    *  https://blog.csdn.net/jeff_fangji/article/details/43916359
     */
   @Test
   def testSemaphore(): Unit = {
@@ -599,6 +602,38 @@ class ZooKeeperClientTest extends ZooKeeperTestHarness {
 
     Thread.sleep(500)
     sendSemaphore.release()
+
+    Thread.sleep(Integer.MAX_VALUE)
+  }
+
+  /**
+    * zk会话重用测试
+    */
+  @Test
+  def testZKReusingSession(): Unit = {
+    val connectedSemaphore = new CountDownLatch(1)
+    val dummyWatcher = new Watcher {
+      override def process(event: WatchedEvent): Unit = {
+        println("Receive watched event：" + event)
+        if (KeeperState.SyncConnected == event.getState) connectedSemaphore.countDown
+      }
+    }
+
+    var zookeeper = new ZooKeeper(zkConnect, 5000, dummyWatcher)
+
+    //连接成功后获取session信息
+    connectedSemaphore.await
+
+    val sessionId = zookeeper.getSessionId
+    val passwd = zookeeper.getSessionPasswd
+
+    //Use illegal sessionId and sessionPassWd
+    zookeeper = new ZooKeeper(zkConnect, 5000, dummyWatcher, -1, "wrong".getBytes())
+    assertFalse(zookeeper.getState.isConnected)
+
+    //Use correct sessionId and sessionPassWd
+    zookeeper = new ZooKeeper(zkConnect, 5000, dummyWatcher, sessionId, passwd)
+    assertEquals(zookeeper.getSessionId,sessionId)
 
     Thread.sleep(Integer.MAX_VALUE)
   }

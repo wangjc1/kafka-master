@@ -71,6 +71,7 @@ abstract class ZooKeeperTestHarness extends JUnitSuite with Logging {
   }
 
   // Trigger session expiry by reusing the session id in another client
+  // Easy to expire a session :https://wiki.apache.org/hadoop/ZooKeeper/FAQ#A4
   def createZooKeeperClientToTriggerSessionExpiry(zooKeeper: ZooKeeper): ZooKeeper = {
     val dummyWatcher = new Watcher {
       override def process(event: WatchedEvent): Unit = {}

@@ -46,16 +46,15 @@ class ControllerFailoverTest extends KafkaServerTestHarness with Logging {
 
   @After
   override def tearDown() {
-    /* 注释掉：用ZK客户端ZooInspector.jar查看里面的内容
     super.tearDown()
     this.metrics.close()
-    */
   }
 
   /**
-   * See @link{https://issues.apache.org/jira/browse/KAFKA-2300}
-   * for the background of this test case
-   */
+    * See @link{https://issues.apache.org/jira/browse/KAFKA-2300}
+    * for the background of this test case
+    * 用ZK客户端ZooInspector.jar查看里面的内容
+    */
   @Test
   def testHandleIllegalStateException() {
     val initialController = servers.find(_.kafkaController.isActive).map(_.kafkaController).getOrElse {
