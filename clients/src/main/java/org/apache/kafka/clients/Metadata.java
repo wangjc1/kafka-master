@@ -49,6 +49,10 @@ import java.util.Set;
  * If topic expiry is enabled for the metadata, any topic that has not been used within the expiry interval
  * is removed from the metadata refresh set after an update. Consumers disable topic expiry since they explicitly
  * manage topics while producers rely on topic expiry to limit the refresh set.
+ *
+ * Metadata是多个producer线程读，一个sender线程更新，因此他是线程安全的
+ *
+ *
  */
 public final class Metadata implements Closeable {
 
@@ -59,11 +63,14 @@ public final class Metadata implements Closeable {
 
     private final long refreshBackoffMs;
     private final long metadataExpireMs;
+    /*Metadata是多个producer线程读，一个sender线程更新*/
     private int version;
     private long lastRefreshMs;
     private long lastSuccessfulRefreshMs;
     private AuthenticationException authenticationException;
+    /*集群配置信息*/
     private Cluster cluster;
+    /*是否强制刷新*/
     private boolean needUpdate;
     /* Topics with expiry time */
     private final Map<String, Long> topics;

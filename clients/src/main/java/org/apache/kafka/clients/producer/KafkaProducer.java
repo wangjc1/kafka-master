@@ -222,6 +222,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private final ExtendedSerializer<K> keySerializer;
     private final ExtendedSerializer<V> valueSerializer;
     private final ProducerConfig producerConfig;
+    /*Buffer满的情况下可以阻塞多长时间*/
     private final long maxBlockTimeMs;
     private final int requestTimeoutMs;
     private final ProducerInterceptors<K, V> interceptors;
@@ -366,9 +367,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             this.apiVersions = new ApiVersions();
             this.accumulator = new RecordAccumulator(logContext,
-                    config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
+                    config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),//batch.size 消息达到这个尺寸就批量发送出去
                     this.compressionType,
-                    config.getInt(ProducerConfig.LINGER_MS_CONFIG),
+                    config.getInt(ProducerConfig.LINGER_MS_CONFIG),//linger.ms 消息延时发送时长，默认是0，这个和batch.size可以组合起来用
                     retryBackoffMs,
                     deliveryTimeoutMs,
                     metrics,
@@ -812,14 +813,18 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         try {
             throwIfProducerClosed();
             // first make sure the metadata for the topic is available
+
             ClusterAndWaitTime clusterAndWaitTime;
             try {
+                // 首先获取集群信息和加载元数据的时间
+                // 获取kafka集群元数据信息，底层会唤醒Sender线程更新Metadata保存的kafka元数据
                 clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);
             } catch (KafkaException e) {
                 if (metadata.isClosed())
                     throw new KafkaException("Producer closed while send in progress", e);
                 throw e;
             }
+            // 计算剩余的等待时间，还可以用于等待添加数据到队列（总的等待时间-获取元数据信息的时间）
             long remainingWaitMs = Math.max(0, maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs);
             Cluster cluster = clusterAndWaitTime.cluster;
             byte[] serializedKey;
@@ -838,13 +843,14 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
-            //获取分区编号，默认采用Round-Robin算法，消息均匀分配到各个分区中，算法实现类：DefaultPartitioner
+            // 获取分区编号，默认采用Round-Robin算法，消息均匀分配到各个分区中，算法实现类：DefaultPartitioner
             int partition = partition(record, serializedKey, serializedValue, cluster);
             tp = new TopicPartition(record.topic(), partition);
 
             setReadOnly(record.headers());
             Header[] headers = record.headers().toArray();
 
+            // 预估数据最大可能用到的尺寸
             int serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(apiVersions.maxUsableProduceMagic(),
                     compressionType, serializedKey, serializedValue, headers);
             ensureValidRecordSize(serializedSize);
@@ -936,6 +942,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             int version = metadata.requestUpdate();
             sender.wakeup();
             try {
+                // 请求服务器获取集群相关信息，会调用wait(60s)方法阻塞
+                // 在Sender线程中向服务器发送获取Meta信息请求：Sender.poll()=>NetworkClient.maybeUpdate()=>sendInternalMetadataRequest()=>wait(60s)
+                // 请求成功后，更新Meta信息并唤醒所有阻塞：Sender.poll()=>NetworkClient.handleCompletedReceives()=>NetworkClient.handleCompletedMetadataResponse()=> notifyAll()
                 metadata.awaitUpdate(version, remainingWaitMs);
             } catch (TimeoutException ex) {
                 // Rethrow with original maxWaitMs to prevent logging exception with remainingWaitMs

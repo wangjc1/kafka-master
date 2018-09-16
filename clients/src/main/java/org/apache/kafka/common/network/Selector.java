@@ -694,6 +694,7 @@ public class Selector implements Selectable, AutoCloseable {
     }
 
     /**
+     * 关闭连接通道，获取超时的连接调用inFlightRequests.nodesWithTimedOutRequests()方法
      * Close the connection identified by the given id
      */
     public void close(String id) {

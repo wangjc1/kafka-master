@@ -106,7 +106,7 @@ public class BufferPoolTest {
         CountDownLatch allocation = asyncAllocate(pool, 5 * 1024);
         assertEquals("Allocation shouldn't have happened yet, waiting on memory.", 1L, allocation.getCount());
         doDealloc.countDown(); // return the memory
-        assertTrue("Allocation should succeed soon after de-allocation", allocation.await(1, TimeUnit.SECONDS));
+        assertTrue("Allocation should succeed soon after de-allocation", allocation.await(5, TimeUnit.SECONDS));
     }
 
     private CountDownLatch asyncDeallocate(final BufferPool pool, final ByteBuffer buffer) {

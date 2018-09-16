@@ -1006,6 +1006,7 @@ public class NetworkClient implements KafkaClient {
         private long maybeUpdate(long now, Node node) {
             String nodeConnectionId = node.idString();
 
+            // 判断是否和集群服务器还处于连接状态
             if (canSendRequest(nodeConnectionId, now)) {
                 this.metadataFetchInProgress = true;
                 MetadataRequest.Builder metadataRequest;
@@ -1017,6 +1018,7 @@ public class NetworkClient implements KafkaClient {
 
 
                 log.debug("Sending metadata request {} to node {}", metadataRequest, node);
+                // 向集群发送更新Metadata数据请求
                 sendInternalMetadataRequest(metadataRequest, nodeConnectionId, now);
                 return defaultRequestTimeoutMs;
             }

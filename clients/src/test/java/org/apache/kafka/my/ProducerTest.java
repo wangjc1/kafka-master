@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 public class ProducerTest {
 
     Producer producer = null;
-    String topic = "test-topic-08";
+    String topic = "test-topic-01";
 
     @Before
     public void init() {
@@ -25,6 +25,7 @@ public class ProducerTest {
         props.put(ProducerConfig.CLIENT_ID_CONFIG, "producerr-test-01");
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.LINGER_MS_CONFIG,10000);//测试延时10s发送消息
         producer = new KafkaProducer<>(props);
     }
 
@@ -68,7 +69,7 @@ public class ProducerTest {
         );
 
         try {
-            Thread.sleep(1000);
+            Thread.sleep(15000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
