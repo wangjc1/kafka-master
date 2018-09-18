@@ -197,6 +197,8 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
  * certain client features.  For instance, the transactional APIs need broker versions 0.11.0 or later. You will receive an
  * <code>UnsupportedVersionException</code> when invoking an API that is not available in the running broker version.
  * </p>
+ *
+ * 参考：https://blog.csdn.net/u013332124/article/details/81321942
  */
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
@@ -806,6 +808,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * 生产端将消息发送到代理节点上(Node)，如果callback不为空则为异步发送，反之则为同步
      * Implementation of asynchronously send a record to a topic.
      */
     private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
@@ -850,9 +853,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             setReadOnly(record.headers());
             Header[] headers = record.headers().toArray();
 
-            // 预估数据最大可能用到的尺寸
+            // 对消息的大小进行评估(取上限值)
             int serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(apiVersions.maxUsableProduceMagic(),
                     compressionType, serializedKey, serializedValue, headers);
+            // 保证消息的大小不能太大。如果超过了maxRequestSize和totalMemorySize就会报错
             ensureValidRecordSize(serializedSize);
             long timestamp = record.timestamp() == null ? time.milliseconds() : record.timestamp();
             log.trace("Sending record {} with callback {} to topic {} partition {}", record, callback, record.topic(), partition);
@@ -862,9 +866,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             if (transactionManager != null && transactionManager.isTransactional())
                 transactionManager.maybeAddPartitionToTransaction(tp);
 
-            //先将消息缓存到消息收集器中，当收集器满了，再发生给Broker
+            //将消息添加到批次中(ProducerBatch)
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs);
+            // 判断批次是否填充满了，或者是否有新的批次要产生，如果是的话就要准备通知sender线程发送数据了
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
                 this.sender.wakeup();
@@ -974,11 +979,13 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * Validate that the record size isn't too large
      */
     private void ensureValidRecordSize(int size) {
+        //maxRequestSize默认是10MB
         if (size > this.maxRequestSize)
             throw new RecordTooLargeException("The message is " + size +
                     " bytes when serialized which is larger than the maximum request size you have configured with the " +
                     ProducerConfig.MAX_REQUEST_SIZE_CONFIG +
                     " configuration.");
+        //totalMemorySize默认是32MB
         if (size > this.totalMemorySize)
             throw new RecordTooLargeException("The message is " + size +
                     " bytes when serialized which is larger than the total memory buffer you have configured with the " +

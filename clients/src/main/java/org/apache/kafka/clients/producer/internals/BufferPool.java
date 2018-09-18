@@ -16,19 +16,19 @@
  */
 package org.apache.kafka.clients.producer.internals;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.Meter;
 import org.apache.kafka.common.utils.Time;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 /**
@@ -45,13 +45,13 @@ public class BufferPool {
 
     static final String WAIT_TIME_SENSOR_NAME = "bufferpool-wait-time";
 
-    private final long totalMemory;
-    private final int poolableSize;
+    private final long totalMemory;//可分配的缓存池总大小
+    private final int poolableSize;//缓存池大小
     private final ReentrantLock lock;
-    private final Deque<ByteBuffer> free;
+    private final Deque<ByteBuffer> free;//存放被回收的内存块，如果再次申请相同大小块的内存时，从队列中弹出
     private final Deque<Condition> waiters;
     /** Total available memory is the sum of nonPooledAvailableMemory and the number of byte buffers in free * poolableSize.  */
-    private long nonPooledAvailableMemory;
+    private long nonPooledAvailableMemory;//从总的内存块分配出来的内存块(但不包括free队列中的内存块)
     private final Metrics metrics;
     private final Time time;
     private final Sensor waitTime;
@@ -132,6 +132,7 @@ public class BufferPool {
                         boolean waitingTimeElapsed;
                         try {
                             waitingTimeElapsed = !moreMemory.await(remainingTimeToBlockNs, TimeUnit.NANOSECONDS);
+                            System.out.println(Thread.currentThread().getName()+":Wake Up...2");
                         } finally {
                             long endWaitNs = time.nanoseconds();
                             timeNs = Math.max(0L, endWaitNs - startWaitNs);
@@ -215,6 +216,9 @@ public class BufferPool {
     }
 
     /**
+     * nonPooledAvailableMemory是已经分配非标准(和poolableSize不等)块大小总和，但不包括free队列
+     * 当要分配的内存size大于nonPooledAvailableMemory时，说明已经分配的非标准内存不够用，这是把free队列中
+     * 标准的内存块释放掉(其实这些内存块在物理内存中没有做任何改变)然后累加到nonPooledAvailableMemory中
      * Attempt to ensure we have at least the requested number of bytes of memory for allocation by deallocating pooled
      * buffers (if needed)
      */

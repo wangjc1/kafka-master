@@ -68,7 +68,8 @@ public class BufferPoolTest {
         assertEquals("Available memory should have shrunk", totalMemory - size, pool.availableMemory());
         buffer.putInt(1);
         buffer.flip();
-        pool.deallocate(buffer);
+
+        pool.deallocate(buffer); //重新分配
         assertEquals("All memory should be available", totalMemory, pool.availableMemory());
         assertEquals("But now some is on the free list", totalMemory - size, pool.unallocatedMemory());
         buffer = pool.allocate(size, maxBlockTimeMs);
@@ -81,6 +82,32 @@ public class BufferPoolTest {
         pool.deallocate(buffer);
         assertEquals("All memory should be available", totalMemory, pool.availableMemory());
         assertEquals("Non-standard size didn't go to the free list.", totalMemory - size, pool.unallocatedMemory());
+    }
+
+    /**
+     * 如果分配的内存块和缓冲池(poolableSize)大小不一致，会导致无法回收已经分配的内存块
+     * @throws Exception
+     */
+    @Test
+    public void deAllocateWithoutRecycleTest() throws Exception {
+        long totalMemory = 2 * 1024;
+        int size = 1024;
+        BufferPool pool = new BufferPool(totalMemory, size, metrics, time, metricGroup);
+        ByteBuffer buffer = pool.allocate(size, maxBlockTimeMs);
+
+        pool.deallocate(buffer);
+        assertEquals("All memory should be available", totalMemory, pool.availableMemory());
+        assertEquals("But now some is on the free list", totalMemory - size, pool.unallocatedMemory());
+
+        size = 1025;
+        ByteBuffer escapeBuffer = pool.allocate(size, maxBlockTimeMs);
+        escapeBuffer.putInt(1);
+
+        pool.deallocate(escapeBuffer);
+        assertEquals("All memory should be available", totalMemory, pool.availableMemory());
+        assertEquals("Unallocated memory should have shrunk", totalMemory, pool.unallocatedMemory());
+
+        assertEquals("Escape Buffer is not cleared.",4, escapeBuffer.position());
     }
 
     /**
@@ -107,6 +134,8 @@ public class BufferPoolTest {
         assertEquals("Allocation shouldn't have happened yet, waiting on memory.", 1L, allocation.getCount());
         doDealloc.countDown(); // return the memory
         assertTrue("Allocation should succeed soon after de-allocation", allocation.await(5, TimeUnit.SECONDS));
+
+        Thread.sleep(6000);
     }
 
     private CountDownLatch asyncDeallocate(final BufferPool pool, final ByteBuffer buffer) {
@@ -145,6 +174,7 @@ public class BufferPoolTest {
                     e.printStackTrace();
                 } finally {
                     completed.countDown();
+                    System.out.println("Allocating Ok!");
                 }
             }
         };
@@ -273,12 +303,14 @@ public class BufferPoolTest {
         @Override
         public void run() {
             try {
+                System.out.println(Thread.currentThread().getName()+":Blocking....");
                 pool.allocate(2, maxBlockTimeMs);
+                System.out.println(Thread.currentThread().getName()+":Wake Up...1");
                 fail("The buffer allocated more memory than its maximum value 2");
             } catch (TimeoutException e) {
                 // this is good
             } catch (InterruptedException e) {
-                // this can be neglected
+                System.out.println(Thread.currentThread().getName()+":Interrupting...");
             }
         }
     }

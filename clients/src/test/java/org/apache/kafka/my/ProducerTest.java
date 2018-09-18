@@ -48,7 +48,8 @@ public class ProducerTest {
     public void testAsyncSend() {
         int messageNo = 1;
         long startTime = System.currentTimeMillis();
-        String messageStr = "Message_" + messageNo;
+        //String messageStr = "Message_" + messageNo;
+        String messageStr = "abcd";
         producer.send(new ProducerRecord<>(topic,
                 messageNo,
                 messageStr),

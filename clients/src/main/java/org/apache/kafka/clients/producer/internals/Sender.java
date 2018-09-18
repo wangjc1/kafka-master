@@ -16,30 +16,9 @@
  */
 package org.apache.kafka.clients.producer.internals;
 
-import java.util.ArrayList;
-import org.apache.kafka.clients.ApiVersions;
-import org.apache.kafka.clients.ClientRequest;
-import org.apache.kafka.clients.ClientResponse;
-import org.apache.kafka.clients.KafkaClient;
-import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.NetworkClientUtils;
-import org.apache.kafka.clients.RequestCompletionHandler;
-import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.Node;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.AuthenticationException;
-import org.apache.kafka.common.errors.ClusterAuthorizationException;
-import org.apache.kafka.common.errors.InvalidMetadataException;
-import org.apache.kafka.common.errors.OutOfOrderSequenceException;
-import org.apache.kafka.common.errors.ProducerFencedException;
-import org.apache.kafka.common.errors.RetriableException;
-import org.apache.kafka.common.errors.TimeoutException;
-import org.apache.kafka.common.errors.TopicAuthorizationException;
-import org.apache.kafka.common.errors.TransactionalIdAuthorizationException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
-import org.apache.kafka.common.errors.UnsupportedVersionException;
+import org.apache.kafka.clients.*;
+import org.apache.kafka.common.*;
+import org.apache.kafka.common.errors.*;
 import org.apache.kafka.common.metrics.Measurable;
 import org.apache.kafka.common.metrics.MetricConfig;
 import org.apache.kafka.common.metrics.Sensor;
@@ -49,23 +28,14 @@ import org.apache.kafka.common.metrics.stats.Meter;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.record.MemoryRecords;
 import org.apache.kafka.common.record.RecordBatch;
-import org.apache.kafka.common.requests.AbstractRequest;
-import org.apache.kafka.common.requests.InitProducerIdRequest;
-import org.apache.kafka.common.requests.InitProducerIdResponse;
-import org.apache.kafka.common.requests.ProduceRequest;
-import org.apache.kafka.common.requests.ProduceResponse;
-import org.apache.kafka.common.requests.RequestHeader;
+import org.apache.kafka.common.requests.*;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.kafka.common.record.RecordBatch.NO_TIMESTAMP;
 
@@ -311,6 +281,16 @@ public class Sender implements Runnable {
         client.poll(pollTimeout, now);
     }
 
+    /*
+    在sender线程的发送"生产消息"方法里面，大概会做这些事情
+    1. 先找出哪些消息批次可以被发送出去了，要发送往哪些节点
+    2. 之后判断在要送的这些消息批次中，是否有消息的partition的leader获取不到的情况，如果有，就需要更新元数据来获取该partition的leader
+    3. 判断要发送的那些节点是否都保持着连接，没连接上的那些节点要先移除掉
+    4. 从accumulator中把那些可以发送的节点的消息批次都拿出来准备发送
+    5. 遍历所有还在队列中待着的消息批次，判断他们是否过期了。过期的判断和request.timeout.ms配置有关系。
+    6. 之后就是将要发送的消息批次封装成请求对象，然后设置一下发送的标志位。这时候会将要发向一个节点的消息批次都封装到一个请求对象中取。这里不会真正的发送，其实只是用相关nio的channel在selector上注册OP_WRITE事件，然后设置一下要发送的数据作为attach,之后poll()的时候就会把这些数据拿出来发送出去。
+    7. 最后的poll()方法中，会先尝试更新元数据,是否要更新元数据是根据元数据更新频率和更新标志位是否被设置来决定的。然后发送请求，将步骤6中的那些封装的消息批次发送出去。这里也有可能读取服务端返回的响应，然后进行相应的处理，比如失败重试或者回调函数等等。
+    */
     private long sendProducerData(long now) {
         Cluster cluster = metadata.fetch();
         // get the list of partitions with data ready to send
@@ -577,6 +557,7 @@ public class Sender implements Runnable {
                                long now, long throttleUntilTimeMs) {
         Errors error = response.error;
 
+        // 如果一个批次[ProducerBatch]太大，会被分隔成多个小的批次
         if (error == Errors.MESSAGE_TOO_LARGE && batch.recordCount > 1 &&
                 (batch.magic() >= RecordBatch.MAGIC_VALUE_V2 || batch.isCompressed())) {
             // If the batch is too large, we split the batch and send the split batches again. We do not decrement
@@ -589,6 +570,7 @@ public class Sender implements Runnable {
                 error);
             if (transactionManager != null)
                 transactionManager.removeInFlightBatch(batch);
+            // 分割大批次消息
             this.accumulator.splitAndReenqueue(batch);
             this.accumulator.deallocate(batch);
             this.sensors.recordBatchSplit();
@@ -733,6 +715,7 @@ public class Sender implements Runnable {
     }
 
     /**
+     * 按代理节点[nodeId]对ProducerBatch进行分组，把属于同一个代理节点的批次放到一块
      * Transfer the record batches into a list of produce requests on a per-node basis
      */
     private void sendProduceRequests(Map<Integer, List<ProducerBatch>> collated, long now) {

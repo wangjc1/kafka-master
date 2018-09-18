@@ -148,11 +148,16 @@ public final class RecordAccumulator {
     }
 
     /**
+     当要把消息添加到批次中时，会经过下面这些流程
+     1. 先找出目标topic对应partition的双向队列，没有的话就创建一个。所以每一个partition都有一个属于自己的批次队列Deque<RecordBatch>。
+     2. 从队列尾部取出一个批次，如果取到了，就尝试把消息添加到这个批次中，如果添加成功了，就立即返回。返回的时候会将目前批次的状态也携带着返回，调用者就可以知道批次是否满了或者队列中已经不止一个批次了，就可以准备发送数据了。
+     3. 如果队列中没有一个批次，或者消息添加到批次失败了。就要去重新申请内存，这个内存的空间取决于当前消息大小和batch.size的最大值。如果要申请的空间+已经使用的空间超过了buffer.size的值，线程就会阻塞，等到空间被释放或者达到maxTimeToBlock时间后抛出异常。
+     4. 由于在前面申请空间的时候可能有其他线程改变了双向队列的状态(比如有线程新生成了一个批次呢)，所以要再去检查一下是否可以从队列中获取到批次并将消息添加进去。如果这时候添加成功了就立即返回
+     5. 用申请到的内存空间新建一个批次出来，然后把消息添加到批次。再把批次加到队列尾部，然后返回当前的状态。
      * Add a record to the accumulator, return the append result
      * <p>
      * The append result will contain the future metadata, and flag for whether the appended batch is full or a new batch is created
      * <p>
-     *
      * @param tp The topic/partition to which this record is being sent
      * @param timestamp The timestamp of the record
      * @param key The key for the record
@@ -170,10 +175,12 @@ public final class RecordAccumulator {
                                      long maxTimeToBlock) throws InterruptedException {
         // We keep track of the number of appending thread to make sure we do not miss batches in
         // abortIncompleteBatches().
+        // 当Sender线程被强制关闭后，调用abortIncompleteBatches()方法来清除掉未完成ProducerBatch
         appendsInProgress.incrementAndGet();
         ByteBuffer buffer = null;
         if (headers == null) headers = Record.EMPTY_HEADERS;
         try {
+            // 第一次append，如果appendResult返回null，则进行第二次append
             // check if we have an in-progress batch
             Deque<ProducerBatch> dq = getOrCreateDeque(tp);
             synchronized (dq) {
@@ -184,11 +191,13 @@ public final class RecordAccumulator {
                     return appendResult;
             }
 
+            // 第二次append，如果appendResult返回null，则进行第三次append
             // we don't have an in-progress record batch try to allocate a new batch
-            // 第一次发送，需要构建一个
             byte maxUsableMagic = apiVersions.maxUsableProduceMagic();
+            // 开辟内存
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
+            // 分配size大小一个内存块，只有在第二次append失败后，才使用此内存块，否则直接释放掉
             buffer = free.allocate(size, maxTimeToBlock);
             synchronized (dq) {
                 // Need to check if producer is closed again after grabbing the dequeue lock.
@@ -201,6 +210,8 @@ public final class RecordAccumulator {
                     return appendResult;
                 }
 
+                // 前面两次append如果都没成功(比如dp一直是空的)，则创建一个新的ProducerBatch，并添加到队列的尾部
+                // 新构建的batch使用上面分配的内存块buffer来存储
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
                 ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, time.milliseconds());
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, headers, callback, time.milliseconds()));
