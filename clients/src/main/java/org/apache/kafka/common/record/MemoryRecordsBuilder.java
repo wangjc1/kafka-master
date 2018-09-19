@@ -72,6 +72,7 @@ public class MemoryRecordsBuilder {
     private short producerEpoch;
     private int baseSequence;
     private int uncompressedRecordsSizeInBytes = 0; // Number of bytes (excluding the header) written before compression
+    // 当前
     private int numRecords = 0;
     private float actualCompressionRatio = 1;
     private long maxTimestamp = RecordBatch.NO_TIMESTAMP;
@@ -518,6 +519,7 @@ public class MemoryRecordsBuilder {
     }
 
     /**
+     * v2版本的消息格式去掉了CRC校验字段，所以如果当前版本是V2，则返回null
      * Append a new record at the next sequential offset.
      * @param timestamp The record timestamp
      * @param key The record key
@@ -702,6 +704,7 @@ public class MemoryRecordsBuilder {
     }
 
     /**
+     * 检查是否有空间存储key/value键值队值，如果没有任何记录最佳，直接返回true
      * Check if we have room for a new record containing the given key/value pair. If no records have been
      * appended, then this returns true.
      */

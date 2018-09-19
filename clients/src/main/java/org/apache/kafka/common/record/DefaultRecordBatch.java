@@ -121,6 +121,8 @@ public class DefaultRecordBatch extends AbstractRecordBatch implements MutableRe
     public static final int RECORDS_COUNT_OFFSET = BASE_SEQUENCE_OFFSET + BASE_SEQUENCE_LENGTH;
     static final int RECORDS_COUNT_LENGTH = 4;
     static final int RECORDS_OFFSET = RECORDS_COUNT_OFFSET + RECORDS_COUNT_LENGTH;
+    // V2版本消息格式，Record Batch Header部分共61B
+    // @see RecordBatch
     public static final int RECORD_BATCH_OVERHEAD = RECORDS_OFFSET;
 
     private static final byte COMPRESSION_CODEC_MASK = 0x07;

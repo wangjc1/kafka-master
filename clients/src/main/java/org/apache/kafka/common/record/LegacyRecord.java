@@ -62,11 +62,13 @@ public final class LegacyRecord {
     public static final int HEADER_SIZE_V1 = CRC_LENGTH + MAGIC_LENGTH + ATTRIBUTES_LENGTH + TIMESTAMP_LENGTH;
 
     /**
+     * V0版消息的最小长度（RECORD_OVERHEAD_V0）为crc32 + magic + attributes + key length + value length = 14B
      * The amount of overhead bytes in a record
      */
     public static final int RECORD_OVERHEAD_V0 = HEADER_SIZE_V0 + KEY_SIZE_LENGTH + VALUE_SIZE_LENGTH;
 
     /**
+     * V1版消息的最小长度（RECORD_OVERHEAD_V0）为crc32 + magic + attributes + key length + value length + tImestamp length = 22B
      * The amount of overhead bytes in a record
      */
     public static final int RECORD_OVERHEAD_V1 = HEADER_SIZE_V1 + KEY_SIZE_LENGTH + VALUE_SIZE_LENGTH;

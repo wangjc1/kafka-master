@@ -48,6 +48,8 @@ public interface Records extends BaseRecords {
     int OFFSET_LENGTH = 8;
     int SIZE_OFFSET = OFFSET_OFFSET + OFFSET_LENGTH;
     int SIZE_LENGTH = 4;
+    // 每条消息都一个offset用来标志它在partition中的偏移量，这个offset是逻辑值，而非实际物理偏移值，
+    // message size表示消息的大小，这两者的一起被称之为日志头部（LOG_OVERHEAD），固定为12B
     int LOG_OVERHEAD = SIZE_OFFSET + SIZE_LENGTH;
 
     // the magic offset is at the same offset for all current message formats, but the 4 bytes

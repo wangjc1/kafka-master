@@ -22,6 +22,10 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 /**
+ *  v2版本中消息集谓之为Record Batch，而不是先前的Message Set了
+ *  Record Batch 由 Record Batch Header(61B) 和 Records(1..n)组成
+ *  参考《一文看懂Kafka消息格式的演变》：https://blog.csdn.net/u013256816/article/details/80300225
+ *
  * A record batch is a container for records. In old versions of the record format (versions 0 and 1),
  * a batch consisted always of a single record if no compression was enabled, but could contain
  * many records otherwise. Newer versions (magic versions 2 and above) will generally contain many records
@@ -30,13 +34,19 @@ import java.util.Iterator;
 public interface RecordBatch extends Iterable<Record> {
 
     /**
+     * 消息格式版本号，从0.8.x版本开始到现在的1.1.x版本，Kafka的消息格式也经历了3个版本，当前版本号为2
      * The "magic" values
      */
     byte MAGIC_VALUE_V0 = 0;
     byte MAGIC_VALUE_V1 = 1;
+    /**
+     * kafka从0.11.0版本开始所使用的消息格式版本为v2，这个版本的消息相比于v0和v1的版本而言改动很大，
+     * 同时还参考了Protocol Buffer而引入了变长整型（Varints）和ZigZag编码
+     */
     byte MAGIC_VALUE_V2 = 2;
 
     /**
+     * 当前版本号为2
      * The current "magic" value
      */
     byte CURRENT_MAGIC_VALUE = MAGIC_VALUE_V2;
