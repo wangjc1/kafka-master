@@ -49,7 +49,7 @@ public class BufferPool {
     private final int poolableSize;//缓存池大小
     private final ReentrantLock lock;
     private final Deque<ByteBuffer> free;//存放被回收的内存块，如果再次申请相同大小块的内存时，从队列中弹出
-    private final Deque<Condition> waiters;
+    private final Deque<Condition> waiters;//用于存放lock条件，可以循环调用condition.signal()方法唤醒等待，防止死锁
     /** Total available memory is the sum of nonPooledAvailableMemory and the number of byte buffers in free * poolableSize.  */
     private long nonPooledAvailableMemory;//从总的内存块分配出来的内存块(但不包括free队列中的内存块)
     private final Metrics metrics;
@@ -132,7 +132,6 @@ public class BufferPool {
                         boolean waitingTimeElapsed;
                         try {
                             waitingTimeElapsed = !moreMemory.await(remainingTimeToBlockNs, TimeUnit.NANOSECONDS);
-                            System.out.println(Thread.currentThread().getName()+":Wake Up...2");
                         } finally {
                             long endWaitNs = time.nanoseconds();
                             timeNs = Math.max(0L, endWaitNs - startWaitNs);

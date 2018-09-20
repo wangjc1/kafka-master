@@ -303,14 +303,13 @@ public class BufferPoolTest {
         @Override
         public void run() {
             try {
-                System.out.println(Thread.currentThread().getName()+":Blocking....");
+                //当分配空间不足时，阻塞 maxBlockTimeMs 毫秒，直到调用线程interrupt()方法唤醒
                 pool.allocate(2, maxBlockTimeMs);
                 System.out.println(Thread.currentThread().getName()+":Wake Up...1");
                 fail("The buffer allocated more memory than its maximum value 2");
             } catch (TimeoutException e) {
                 // this is good
             } catch (InterruptedException e) {
-                System.out.println(Thread.currentThread().getName()+":Interrupting...");
             }
         }
     }

@@ -117,6 +117,10 @@ public class ByteBufferOutputStream extends OutputStream {
             expandBuffer(remainingBytesRequired);
     }
 
+    /**
+     * 按REALLOCATION_FACTOR倍数来扩展Buffer
+     * @param remainingRequired
+     */
     private void expandBuffer(int remainingRequired) {
         int expandSize = Math.max((int) (buffer.limit() * REALLOCATION_FACTOR), buffer.position() + remainingRequired);
         ByteBuffer temp = ByteBuffer.allocate(expandSize);

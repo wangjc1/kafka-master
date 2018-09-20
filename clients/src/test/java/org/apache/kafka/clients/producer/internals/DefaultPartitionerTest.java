@@ -73,12 +73,13 @@ public class DefaultPartitionerTest {
         final String topicA = "topicA";
         final String topicB = "topicB";
 
-        List<PartitionInfo> allPartitions = asList(new PartitionInfo(topicA, 0, node0, nodes, nodes),
-                new PartitionInfo(topicA, 1, node1, nodes, nodes),
-                new PartitionInfo(topicA, 2, node2, nodes, nodes),
-                new PartitionInfo(topicB, 0, node0, nodes, nodes)
+        List<PartitionInfo> allPartitions = asList(
+                    new PartitionInfo(topicA, 0, node0, nodes, nodes),
+                    new PartitionInfo(topicA, 1, node1, nodes, nodes),
+                    new PartitionInfo(topicA, 2, node2, nodes, nodes),
+                    new PartitionInfo(topicB, 0, node0, nodes, nodes)
                 );
-        Cluster testCluster = new Cluster("clusterId", asList(node0, node1, node2), allPartitions,
+        Cluster testCluster = new Cluster("cluster01", asList(node0, node1, node2), allPartitions,
                 Collections.<String>emptySet(), Collections.<String>emptySet());
 
         final Map<Integer, Integer> partitionCount = new HashMap<>();

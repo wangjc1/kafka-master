@@ -47,6 +47,8 @@ import static org.apache.kafka.common.record.RecordBatch.MAGIC_VALUE_V2;
 import static org.apache.kafka.common.record.RecordBatch.NO_TIMESTAMP;
 
 /**
+ 参考《一文看懂Kafka消息格式的演变》：https://blog.csdn.net/u013256816/article/details/80300225
+
  * A batch of records that is or will be sent.
  *
  * This class is not thread safe and external synchronization must be used when modifying it

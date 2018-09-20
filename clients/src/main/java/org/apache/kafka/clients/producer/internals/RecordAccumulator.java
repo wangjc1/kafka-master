@@ -58,6 +58,7 @@ public final class RecordAccumulator {
     private volatile boolean closed;
     private final AtomicInteger flushesInProgress;
     private final AtomicInteger appendsInProgress;
+    //一个批次的容量
     private final int batchSize;
     private final CompressionType compression;
     private final long lingerMs;
@@ -237,6 +238,7 @@ public final class RecordAccumulator {
 
                 // 前面两次append如果都没成功(比如dp一直是空的)，则创建一个新的ProducerBatch，并添加到队列的尾部
                 // 新构建的batch使用上面分配的内存块buffer来存储
+                // 每个ProducerBatch都包含一个MemoryRecordsBuilder对象
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
                 ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, time.milliseconds());
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, headers, callback, time.milliseconds()));

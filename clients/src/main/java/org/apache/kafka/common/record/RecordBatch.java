@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 /**
+ *
  *  v2版本中消息集谓之为Record Batch，而不是先前的Message Set了
  *  Record Batch 由 Record Batch Header(61B) 和 Records(1..n)组成
  *  参考《一文看懂Kafka消息格式的演变》：https://blog.csdn.net/u013256816/article/details/80300225

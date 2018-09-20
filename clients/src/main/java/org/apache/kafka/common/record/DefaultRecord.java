@@ -63,7 +63,8 @@ import static org.apache.kafka.common.record.RecordBatch.MAGIC_VALUE_V2;
  */
 public class DefaultRecord implements Record {
 
-    // excluding key, value and headers: 5 bytes length + 10 bytes timestamp + 5 bytes offset + 1 byte attributes
+    // Varints并非一直会省空间，一个int32最长会占用5个字节（大于默认的4字节），一个int64最长会占用10字节（大于默认的8字节）
+    // excluding key, value and headers: 5 bytes length(int32) + 10 bytes timestamp(int64) + 5 bytes offset(int32) + 1 byte attributes
     public static final int MAX_RECORD_OVERHEAD = 21;
 
     private static final int NULL_VARINT_SIZE_BYTES = ByteUtils.sizeOfVarint(-1);
@@ -468,6 +469,9 @@ public class DefaultRecord implements Record {
         return size;
     }
 
+    /**
+     * 计算一个Record尺寸的上限值
+     */
     static int recordSizeUpperBound(ByteBuffer key, ByteBuffer value, Header[] headers) {
         int keySize = key == null ? -1 : key.remaining();
         int valueSize = value == null ? -1 : value.remaining();

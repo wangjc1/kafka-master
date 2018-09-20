@@ -48,7 +48,7 @@ import static org.junit.Assert.fail;
 
 public class ProducerBatchTest {
 
-    private final long now = 1488748346917L;
+    private final long now = 1488748346917L;//2017-03-06 05:12:26
 
     private final MemoryRecordsBuilder memoryRecordsBuilder = MemoryRecords.builder(ByteBuffer.allocate(128),
             CompressionType.NONE, TimestampType.CREATE_TIME, 128);
