@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * A simple server that takes size delimited byte arrays and just echos them back to the sender.
  */
-class EchoServer extends Thread {
+public class EchoServer extends Thread {
     public final int port;
     private final ServerSocket serverSocket;
     private final List<Thread> threads;
