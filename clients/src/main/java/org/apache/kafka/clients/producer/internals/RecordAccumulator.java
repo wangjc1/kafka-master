@@ -39,6 +39,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * RecordAccumulator的作用主要是用来组装批次数据：
+ * 数据读进来了，分配内存，并保存数据到一个一个的batch中，并返回是添加成功还是失败了。
+ * 找到那些满足发送条件的batches，然后由sender发送，发送的时候，如果有需要保证发送信息的前后顺序。
+ * flush数据，将所有的消息都发送出去。
+ * 强行停止，所有的batch都不发送了。
+ * 释放内存，2，3，4执行完了后，都需要将对应的batch占用的内存释放掉。
+ *
  * This class acts as a queue that accumulates records into {@link MemoryRecords}
  * instances to be sent to the server.
  * <p>
@@ -61,6 +68,14 @@ public final class RecordAccumulator {
     private final ApiVersions apiVersions;
     private final ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches;
     private final IncompleteBatches incomplete;
+    /*
+     在这里需要了解RecordAccumulator 的一个成员变量private final Set<TopicPartition> muted;
+     这个set里面保存了所有已经发送batch到server中，但是没有收到ack的TopicPartition，俗称inflight
+     假如topic1要发送A,B,C三个batch到server。如果直接将A,B,C按照顺序发送过去，server的收到的顺序可
+     能是C,B,A,这样子落到log中的顺序就变掉了。如果使用mute，发送A，mute里面就包含了topic1, 这个时候，
+     Sender就不会从topic1所在的Deque中取batch了，直到produer收到了batch A 对应的response，然后从
+     mute中去掉topic1。然后发送B...这样子就保证了服务器接收的顺序和producer发送的消息是一样的
+    */
     // The following variables are only accessed by the sender thread, so we don't need to protect them.
     private final Map<TopicPartition, Long> muted;
     private int drainIndex;
@@ -197,7 +212,17 @@ public final class RecordAccumulator {
             // 开辟内存
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
-            // 分配size大小一个内存块，只有在第二次append失败后，才使用此内存块，否则直接释放掉
+
+            /*
+            分配内存这段代码并没有包含在synchronized 中，所以很可能同时会有多个线程申请内存。
+            这个时候如果线程A申请到内存后，线程B已经创建好了，并且创建好了batch（这段代码用synchronized包含，所以同时只有一个线程进行操作）。
+            那么线程A应该再次去尝试添加，如果添加成功了，就释放内存，将内存还给BufferPool。
+            为什么分配内存这段代码没有被包含在synchronized 中呢，因为BufferPool会一直等待，直到有足够的内存分配给申请的线程。
+            如果加到synchronized中，那整个Deque都会被锁住，那其他线程就没办法访问这个Deque了。
+            如果数据写入到batch的频率和Sender发送的频率相等，那么每次写入batch的时候都需要申请内存，创建batch。
+            如果数据写入到batch的频率大于Sender发送的频率，那么每次写入batch的时候就可以直接写入这个batch，
+            直到batch满了或者等待的时间大于等于linger.ms。
+            */
             buffer = free.allocate(size, maxTimeToBlock);
             synchronized (dq) {
                 // Need to check if producer is closed again after grabbing the dequeue lock.
@@ -404,6 +429,16 @@ public final class RecordAccumulator {
     }
 
     /**
+     * 在发送消息之前，需要确定一些信息：
+     * 哪些TopicPartition所对应的Node节点是可以发送信息的。
+     * 下次检查节点是否ready的时间。
+     * 哪些TopicPartition对应的leader找不到
+     *
+     * 实际上，在发送过程中，可以向一个节点发送消息的时候需要满足下面的条件：
+     * 这个节点中至少有一个partition是可以正常发送的（没有处在backing off状态），并且这个 partition 没有 muted。
+     * batch 没有满，但是已经等了lingerMs 长的时间。
+     * accumulator 满了。
+     * accumulator 关闭了。
      * Get a list of nodes whose partitions are ready to be sent, and the earliest time at which any non-sendable
      * partition will be ready; Also return the flag for whether there are any unknown leaders for the accumulated
      * partition batches.
@@ -580,6 +615,11 @@ public final class RecordAccumulator {
     }
 
     /**
+     * 知道了要往那些Node 发送数据，就需要从accumulator中获取要发送的数据，要获取的数据的大小为max.request.size, 它是由几个不同的partition的batch组成的。
+     * 这些batch可以被发送的的条件是：
+     * batch对应的tp没有数据在飞（在Inflight中已经发送出去了，但是没有收到response）。
+     * batch处在retry状态,并且已经等待了backoff长的时间。
+     *
      * Drain all the data for the given nodes and collate them into a list of batches that will fit within the specified
      * size on a per-node basis. This method attempts to avoid choosing the same topic-node over and over.
      *

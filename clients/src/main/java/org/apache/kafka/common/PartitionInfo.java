@@ -91,9 +91,9 @@ public class PartitionInfo {
                              topic,
                              partition,
                              leader == null ? "none" : leader.idString(),
-                             formatNodeIds(replicas),
-                             formatNodeIds(inSyncReplicas),
-                             formatNodeIds(offlineReplicas));
+                             replicas == null? "":formatNodeIds(replicas),
+                             inSyncReplicas == null? "":formatNodeIds(inSyncReplicas),
+                             offlineReplicas == null? "":formatNodeIds(offlineReplicas));
     }
 
     /* Extract the node ids from each item in the array and format for display */

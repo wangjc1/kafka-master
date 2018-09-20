@@ -104,27 +104,31 @@ public class RecordAccumulatorTest {
 
         RecordAccumulator accum = createTestRecordAccumulator(
                 batchSize + DefaultRecordBatch.RECORD_BATCH_OVERHEAD, 10L * batchSize, CompressionType.NONE, 10L);
-        int appends = expectedNumAppends(batchSize);
+        //计算当批次大小为batchSize时，append多少次才能填满
+        int appends = expectedNumAppends(batchSize);//68
         for (int i = 0; i < appends; i++) {
             // append to the first batch
             accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
             Deque<ProducerBatch> partitionBatches = accum.batches().get(tp1);
-            assertEquals(1, partitionBatches.size());
+            assertEquals(1, partitionBatches.size());//当前批次未满，所以始终返回1
 
+            //取出第一个批次
             ProducerBatch batch = partitionBatches.peekFirst();
             assertTrue(batch.isWritable());
             assertEquals("No partitions should be ready.", 0, accum.ready(cluster, now).readyNodes.size());
         }
 
         // this append doesn't fit in the first batch, so a new batch is created and the first batch is closed
-
+        // 这时第一个批次已经被填满了，所以这时再append数据会被添加到第二个批次里
         accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
         Deque<ProducerBatch> partitionBatches = accum.batches().get(tp1);
         assertEquals(2, partitionBatches.size());
         Iterator<ProducerBatch> partitionBatchesIterator = partitionBatches.iterator();
         assertTrue(partitionBatchesIterator.next().isWritable());
+        //查看代理服务器分区等是否正常
         assertEquals("Our partition's leader should be ready", Collections.singleton(node1), accum.ready(cluster, time.milliseconds()).readyNodes);
 
+        // 按node分组，取出batch发送
         List<ProducerBatch> batches = accum.drain(cluster, Collections.singleton(node1), Integer.MAX_VALUE, 0).get(node1.id());
         assertEquals(1, batches.size());
         ProducerBatch batch = batches.get(0);

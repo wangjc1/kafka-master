@@ -994,6 +994,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * 在发送消息的时候，如果想要将所有的数据都发送出去，就需要调用kafkaproducer的flush函数。调用flush后，会将所有的batch都发送出去（不严谨）。
+     *
      * Invoking this method makes all buffered records immediately available to send (even if <code>linger.ms</code> is
      * greater than 0) and blocks on the completion of the requests associated with these records. The post-condition
      * of <code>flush()</code> is that any previously sent record will have completed (e.g. <code>Future.isDone() == true</code>).
