@@ -461,6 +461,10 @@ public class NetworkClient implements KafkaClient {
         }
     }
 
+    /**
+     * 参考《Kafka技术内幕》图2-11
+     * 最终调用SocketChannel.write将数据写入到通道中
+     */
     private void doSend(ClientRequest clientRequest, boolean isInternalRequest, long now, AbstractRequest request) {
         String destination = clientRequest.destination();
         RequestHeader header = clientRequest.makeHeader(request.version());
@@ -475,6 +479,8 @@ public class NetworkClient implements KafkaClient {
             }
         }
         Send send = request.toSend(destination, header);
+        // InFlightRequest正在飞的请求，表示请求发出去了，但还没有收到响应，这时会添加到inFlightRequest队列中
+        // 等待收到响应后，从inFlightRequests从删除
         InFlightRequest inFlightRequest = new InFlightRequest(
                 clientRequest,
                 header,

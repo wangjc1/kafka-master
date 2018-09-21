@@ -74,7 +74,7 @@ public class KafkaChannel {
         THROTTLE_ENDED
     };
 
-    private final String id;
+    private final String id; // node id
     private final TransportLayer transportLayer;
     private final Authenticator authenticator;
     // Tracks accumulated network thread time. This is updated on the network thread.
@@ -293,6 +293,7 @@ public class KafkaChannel {
             receive = new NetworkReceive(maxReceiveSize, id, memoryPool);
         }
 
+        //从连接通道中读取数据
         receive(receive);
         if (receive.complete()) {
             receive.payload().rewind();

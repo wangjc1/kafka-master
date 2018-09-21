@@ -16,13 +16,14 @@
  */
 package org.apache.kafka.common.network;
 
+import org.apache.kafka.common.memory.MemoryPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ScatteringByteChannel;
-import org.apache.kafka.common.memory.MemoryPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A size delimited Receive that consists of a 4 byte network-ordered size N followed by N bytes of content
@@ -91,6 +92,7 @@ public class NetworkReceive implements Receive {
     public long readFrom(ScatteringByteChannel channel) throws IOException {
         int read = 0;
         if (size.hasRemaining()) {
+            // 调用底层 socketChannel.read方法
             int bytesRead = channel.read(size);
             if (bytesRead < 0)
                 throw new EOFException();

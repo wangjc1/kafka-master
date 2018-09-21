@@ -141,7 +141,7 @@ public class NetworkClientTest {
     private void checkSimpleRequestResponse(NetworkClient networkClient) {
         awaitReady(networkClient, node); // has to be before creating any request, as it may send ApiVersionsRequest and its response is mocked with correlation id 0
         ProduceRequest.Builder builder = ProduceRequest.Builder.forCurrentMagic((short) 1, 1000,
-                        Collections.emptyMap());
+                Collections.emptyMap());
         TestCallbackHandler handler = new TestCallbackHandler();
         ClientRequest request = networkClient.newClientRequest(
                 node.idString(), builder, time.milliseconds(), true, minRequestTimeoutMs, handler);
@@ -219,7 +219,7 @@ public class NetworkClientTest {
         // Instrument the test to return a response with a 100ms throttle delay.
         awaitReady(client, node);
         ProduceRequest.Builder builder = ProduceRequest.Builder.forCurrentMagic((short) 1, 1000,
-            Collections.emptyMap());
+                Collections.emptyMap());
         TestCallbackHandler handler = new TestCallbackHandler();
         ClientRequest request = client.newClientRequest(node.idString(), builder, time.milliseconds(), true,
                 minRequestTimeoutMs, handler);
@@ -256,7 +256,7 @@ public class NetworkClientTest {
     // Creates expected ApiVersionsResponse from the specified node, where the max protocol version for the specified
     // key is set to the specified version.
     private ApiVersionsResponse createExpectedApiVersionsResponse(Node node, ApiKeys key,
-        short apiVersionsMaxProtocolVersion) {
+                                                                  short apiVersionsMaxProtocolVersion) {
         List<ApiVersionsResponse.ApiVersion> versionList = new ArrayList<>();
         for (ApiKeys apiKey : ApiKeys.values()) {
             if (apiKey == key) {
@@ -278,7 +278,7 @@ public class NetworkClientTest {
         selector.clear();
 
         ProduceRequest.Builder builder = ProduceRequest.Builder.forCurrentMagic((short) 1, 1000,
-            Collections.emptyMap());
+                Collections.emptyMap());
         TestCallbackHandler handler = new TestCallbackHandler();
         ClientRequest request = client.newClientRequest(node.idString(), builder, time.milliseconds(), true,
                 minRequestTimeoutMs, handler);
@@ -509,14 +509,14 @@ public class NetworkClientTest {
     public void testCallDisconnect() throws Exception {
         awaitReady(client, node);
         assertTrue("Expected NetworkClient to be ready to send to node " + node.idString(),
-            client.isReady(node, time.milliseconds()));
+                client.isReady(node, time.milliseconds()));
         assertFalse("Did not expect connection to node " + node.idString() + " to be failed",
-            client.connectionFailed(node));
+                client.connectionFailed(node));
         client.disconnect(node.idString());
         assertFalse("Expected node " + node.idString() + " to be disconnected.",
-            client.isReady(node, time.milliseconds()));
+                client.isReady(node, time.milliseconds()));
         assertTrue("Expected connection to node " + node.idString() + " to be failed after disconnect",
-            client.connectionFailed(node));
+                client.connectionFailed(node));
         assertFalse(client.canConnect(node, time.milliseconds()));
 
         // ensure disconnect does not reset blackout period if already disconnected
