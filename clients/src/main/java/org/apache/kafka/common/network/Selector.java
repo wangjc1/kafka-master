@@ -101,17 +101,27 @@ public class Selector implements Selectable, AutoCloseable {
 
     private final Logger log;
     private final java.nio.channels.Selector nioSelector;
+    //有正在连接以及连接成功的channel，注意它的类型是KafkaChannel
     private final Map<String, KafkaChannel> channels;
     private final Set<KafkaChannel> explicitlyMutedChannels;
     private boolean outOfMemory;
+    //已发送完的请求
     private final List<Send> completedSends;
+    //stagedReceives把接收到的数据排除掉不在Muted(顺序读写时会用到)队列后的数据会添加到completedReceives队列中
     private final List<NetworkReceive> completedReceives;
+    //当消息分包时，多一个大数据分成多个小包接收，然后组成一个队列Deque<NetworkReceive>
+    //当写数据到通道中时，如果一次写不完，也会多次写入，this.completedSends.add(send);
     private final Map<KafkaChannel, Deque<NetworkReceive>> stagedReceives;
+    //在调用SocketChannel#connect方法时立即完成的SelectionKey.为什么保存的是SelectionKey呢？
     private final Set<SelectionKey> immediatelyConnectedKeys;
+    //已关闭的Channel
     private final Map<String, KafkaChannel> closingChannels;
     private Set<SelectionKey> keysWithBufferedRead;
+    //已断开连接的节点
     private final Map<String, ChannelState> disconnected;
+    //新连接成功的节点
     private final List<String> connected;
+    //发送失败的节点，但并不是由于IO异常导致的失败，而是由于SelectionKey被cancel引起的失败
     private final List<String> failedSends;
     private final Time time;
     private final SelectorMetrics sensors;
@@ -497,6 +507,7 @@ public class Selector implements Selectable, AutoCloseable {
                         sensors.successfulAuthentication.record();
                 }
 
+                // 试图接收对方发来的数据
                 attemptRead(key, channel);
 
                 if (channel.hasBytesBuffered()) {

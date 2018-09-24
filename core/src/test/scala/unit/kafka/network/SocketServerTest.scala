@@ -92,104 +92,6 @@ class SocketServerTest extends JUnitSuite {
     kafkaLogger.setLevel(logLevelToRestore)
   }
 
-  def sendRequest(socket: Socket, request: Array[Byte], id: Option[Short] = None, flush: Boolean = true) {
-    val outgoing = new DataOutputStream(socket.getOutputStream)
-    id match {
-      case Some(id) =>
-        outgoing.writeInt(request.length + 2)
-        outgoing.writeShort(id)
-      case None =>
-        outgoing.writeInt(request.length)
-    }
-    outgoing.write(request)
-    if (flush)
-      outgoing.flush()
-  }
-
-  def receiveResponse(socket: Socket): Array[Byte] = {
-    val incoming = new DataInputStream(socket.getInputStream)
-    val len = incoming.readInt()
-    val response = new Array[Byte](len)
-    incoming.readFully(response)
-    response
-  }
-
-  private def receiveRequest(channel: RequestChannel, timeout: Long = 2000L): RequestChannel.Request = {
-    channel.receiveRequest(timeout) match {
-      case request: RequestChannel.Request => request
-      case RequestChannel.ShutdownRequest => fail("Unexpected shutdown received")
-      case null => fail("receiveRequest timed out")
-    }
-  }
-
-  /* A simple request handler that just echos back the response */
-  def processRequest(channel: RequestChannel) {
-    processRequest(channel, receiveRequest(channel))
-  }
-
-  def processRequest(channel: RequestChannel, request: RequestChannel.Request) {
-    val byteBuffer = request.body[AbstractRequest].serialize(request.header)
-    byteBuffer.rewind()
-
-    val send = new NetworkSend(request.context.connectionId, byteBuffer)
-    channel.sendResponse(new RequestChannel.SendResponse(request, send, Some(request.header.toString), None))
-  }
-
-  def connect(s: SocketServer = server, protocol: SecurityProtocol = SecurityProtocol.PLAINTEXT, localAddr: InetAddress = null) = {
-    val socket = new Socket("localhost", s.boundPort(ListenerName.forSecurityProtocol(protocol)), localAddr, 0)
-    sockets += socket
-    socket
-  }
-
-  // Create a client connection, process one request and return (client socket, connectionId)
-  def connectAndProcessRequest(s: SocketServer): (Socket, String) = {
-    val socket = connect(s)
-    val request = sendAndReceiveRequest(socket, s)
-    processRequest(s.requestChannel, request)
-    (socket, request.context.connectionId)
-  }
-
-  def sendAndReceiveRequest(socket: Socket, server: SocketServer): RequestChannel.Request = {
-    sendRequest(socket, producerRequestBytes())
-    receiveRequest(server.requestChannel)
-  }
-
-  def shutdownServerAndMetrics(server: SocketServer): Unit = {
-    server.shutdown()
-    server.metrics.close()
-  }
-
-  private def producerRequestBytes(ack: Short = 0): Array[Byte] = {
-    val correlationId = -1
-    val clientId = ""
-    val ackTimeoutMs = 10000
-
-    val emptyRequest = ProduceRequest.Builder.forCurrentMagic(ack, ackTimeoutMs,
-      new HashMap[TopicPartition, MemoryRecords]()).build()
-    val emptyHeader = new RequestHeader(ApiKeys.PRODUCE, emptyRequest.version, clientId, correlationId)
-    val byteBuffer = emptyRequest.serialize(emptyHeader)
-    byteBuffer.rewind()
-
-    val serializedBytes = new Array[Byte](byteBuffer.remaining)
-    byteBuffer.get(serializedBytes)
-    serializedBytes
-  }
-
-  @Test
-  def nioRequestTest() {
-    val plainSocket = connect(protocol = SecurityProtocol.PLAINTEXT)
-
-    val buffer = "Hello Kafka".getBytes
-
-    val os = new DataOutputStream(plainSocket.getOutputStream)
-    //os.writeBytes("Hello Kafka")
-    os.writeInt(buffer.length)
-    os.write(buffer)
-    os.flush()
-    //processRequest(server.requestChannel)
-    //receiveResponse(plainSocket)
-  }
-
   @Test
   def simpleRequest() {
     val plainSocket = connect(protocol = SecurityProtocol.PLAINTEXT)
@@ -1070,6 +972,89 @@ class SocketServerTest extends JUnitSuite {
 
       testableSelector.waitForOperations(SelectorOperation.CloseSelector, 1)
     }
+  }
+
+  def sendRequest(socket: Socket, request: Array[Byte], id: Option[Short] = None, flush: Boolean = true) {
+    val outgoing = new DataOutputStream(socket.getOutputStream)
+    id match {
+      case Some(id) =>
+        outgoing.writeInt(request.length + 2)
+        outgoing.writeShort(id)
+      case None =>
+        outgoing.writeInt(request.length)
+    }
+    outgoing.write(request)
+    if (flush)
+      outgoing.flush()
+  }
+
+  def receiveResponse(socket: Socket): Array[Byte] = {
+    val incoming = new DataInputStream(socket.getInputStream)
+    val len = incoming.readInt()
+    val response = new Array[Byte](len)
+    incoming.readFully(response)
+    response
+  }
+
+  private def receiveRequest(channel: RequestChannel, timeout: Long = 2000L): RequestChannel.Request = {
+    channel.receiveRequest(timeout) match {
+      case request: RequestChannel.Request => request
+      case RequestChannel.ShutdownRequest => fail("Unexpected shutdown received")
+      case null => fail("receiveRequest timed out")
+    }
+  }
+
+  /* A simple request handler that just echos back the response */
+  def processRequest(channel: RequestChannel) {
+    processRequest(channel, receiveRequest(channel))
+  }
+
+  def processRequest(channel: RequestChannel, request: RequestChannel.Request) {
+    val byteBuffer = request.body[AbstractRequest].serialize(request.header)
+    byteBuffer.rewind()
+
+    //构建请求数据，发送对象要实现Send接口
+    val send = new NetworkSend(request.context.connectionId, byteBuffer)
+    channel.sendResponse(new RequestChannel.SendResponse(request, send, Some(request.header.toString), None))
+  }
+
+  def connect(s: SocketServer = server, protocol: SecurityProtocol = SecurityProtocol.PLAINTEXT, localAddr: InetAddress = null) = {
+    val socket = new Socket("localhost", s.boundPort(ListenerName.forSecurityProtocol(protocol)), localAddr, 0)
+    sockets += socket
+    socket
+  }
+
+  // Create a client connection, process one request and return (client socket, connectionId)
+  def connectAndProcessRequest(s: SocketServer): (Socket, String) = {
+    val socket = connect(s)
+    val request = sendAndReceiveRequest(socket, s)
+    processRequest(s.requestChannel, request)
+    (socket, request.context.connectionId)
+  }
+
+  def sendAndReceiveRequest(socket: Socket, server: SocketServer): RequestChannel.Request = {
+    sendRequest(socket, producerRequestBytes())
+    receiveRequest(server.requestChannel)
+  }
+
+  def shutdownServerAndMetrics(server: SocketServer): Unit = {
+    server.shutdown()
+    server.metrics.close()
+  }
+
+  private def producerRequestBytes(ack: Short = 0): Array[Byte] = {
+    val correlationId = -1
+    val clientId = ""
+    val ackTimeoutMs = 10000
+
+    val emptyRequest = ProduceRequest.Builder.forCurrentMagic(ack, ackTimeoutMs, new HashMap[TopicPartition, MemoryRecords]()).build()
+    val emptyHeader = new RequestHeader(ApiKeys.PRODUCE, emptyRequest.version, clientId, correlationId)
+    val byteBuffer = emptyRequest.serialize(emptyHeader)
+    byteBuffer.rewind()
+
+    val serializedBytes = new Array[Byte](byteBuffer.remaining)
+    byteBuffer.get(serializedBytes)
+    serializedBytes
   }
 
   private def withTestableServer(testWithServer: TestableSocketServer => Unit): Unit = {

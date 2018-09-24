@@ -29,7 +29,7 @@ import org.apache.log4j.PropertyConfigurator
 import scala.collection.JavaConverters._
 
 /**
-  * 1. 配置程序参数为：config\server.properties
+  * 1. 配置程序参数为：config/server.properties --override num.partitions=1  --override replication-factor=2 --override log.segment.bytes=1024 --override log.index.size.max.bytes=1024
   * 2. 拷贝log4j.properties文件到源码跟路径下
   */
 object Kafka extends Logging {

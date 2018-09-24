@@ -1,8 +1,10 @@
 package org.apache.kafka.my;
 
 import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.common.utils.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,6 +27,10 @@ public class ProducerTest {
         props.put(ProducerConfig.CLIENT_ID_CONFIG, "producerr-test-01");
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class.getName());
+        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG,1024*1025);//消息最大尺寸
+
         props.put(ProducerConfig.LINGER_MS_CONFIG,10000);//测试延时10s发送消息
         producer = new KafkaProducer<>(props);
     }
@@ -72,6 +78,18 @@ public class ProducerTest {
         try {
             Thread.sleep(15000);
         } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testLargeSend() {
+        byte[] buffer = new byte[1024*900];
+        try {
+            producer.send(new ProducerRecord<>(topic,
+                    1,
+                    Bytes.wrap(buffer))).get();
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
