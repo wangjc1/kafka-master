@@ -262,6 +262,7 @@ public class NetworkClient implements KafkaClient {
             return true;
 
         if (connectionStates.canConnect(node.idString(), now))
+            // 建立连接，并将连接通道(SocketChannel)注册到selector上
             // if we are interested in sending to a node and we don't have a connection to it, initiate one
             initiateConnect(node, now);
 
@@ -522,6 +523,7 @@ public class NetworkClient implements KafkaClient {
         // process completed actions
         long updatedNow = this.time.milliseconds();
         List<ClientResponse> responses = new ArrayList<>();
+        //发送完毕但还没收到响应
         handleCompletedSends(responses, updatedNow);
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);

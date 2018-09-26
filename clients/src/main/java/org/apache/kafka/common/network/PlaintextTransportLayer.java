@@ -20,15 +20,14 @@ package org.apache.kafka.common.network;
  * Transport layer for PLAINTEXT communication
  */
 
+import org.apache.kafka.common.security.auth.KafkaPrincipal;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.channels.SelectionKey;
-
+import java.nio.channels.SocketChannel;
 import java.security.Principal;
-
-import org.apache.kafka.common.security.auth.KafkaPrincipal;
 
 public class PlaintextTransportLayer implements TransportLayer {
     private final SelectionKey key;
@@ -49,6 +48,7 @@ public class PlaintextTransportLayer implements TransportLayer {
     public boolean finishConnect() throws IOException {
         boolean connected = socketChannel.finishConnect();
         if (connected)
+            //表示把连接就绪(OP_CONNECT)状态取消，把可读(OP_READ)加入
             key.interestOps(key.interestOps() & ~SelectionKey.OP_CONNECT | SelectionKey.OP_READ);
         return connected;
     }

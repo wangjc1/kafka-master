@@ -208,7 +208,7 @@ public class Selector implements Selectable, AutoCloseable {
      * <p>
      * Note that this call only initiates the connection, which will be completed on a future {@link #poll(long)}
      * call. Check {@link #connected()} to see which (if any) connections have completed after a given poll call.
-     * @param id The id for the new connection
+     * @param id(Node Id) The id for the new connection
      * @param address The address to connect to
      * @param sendBufferSize The send buffer for the new connection
      * @param receiveBufferSize The receive buffer for the new connection
@@ -222,12 +222,18 @@ public class Selector implements Selectable, AutoCloseable {
         try {
             configureSocketChannel(socketChannel, sendBufferSize, receiveBufferSize);
             boolean connected = doConnect(socketChannel, address);
+            // SelectionKey.OP_CONNECT 表示连接就绪，这时通道可以进行读写操作了
             SelectionKey key = registerChannel(id, socketChannel, SelectionKey.OP_CONNECT);
 
+            // 已建立连接
             if (connected) {
                 // OP_CONNECT won't trigger for immediately connected channels
                 log.debug("Immediately connected to node {}", id);
                 immediatelyConnectedKeys.add(key);
+                //当ops=0时，表示取消所有监听，代表监听任何事件
+                //key.interestOps() & ~ops 代表取消ops事件   
+                //key.interestOps | ops 代表将ops添加监听
+                //key.interestOps & ops
                 key.interestOps(0);
             }
         } catch (IOException | RuntimeException e) {

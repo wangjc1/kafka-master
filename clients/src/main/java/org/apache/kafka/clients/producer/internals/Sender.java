@@ -312,8 +312,10 @@ public class Sender implements Runnable {
         // remove any nodes we aren't ready to send to
         Iterator<Node> iter = result.readyNodes.iterator();
         long notReadyTimeout = Long.MAX_VALUE;
+        // 将消息发送给所有代理节点(Node)
         while (iter.hasNext()) {
             Node node = iter.next();
+            // 这里需要检查两点，一个是是否在更新集群信息，另一个是是否和服务器建立了连接并可以发送数据了
             if (!this.client.ready(node, now)) {
                 iter.remove();
                 notReadyTimeout = Math.min(notReadyTimeout, this.client.pollDelayMs(node, now));

@@ -29,7 +29,9 @@ public class ProducerTest {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class.getName());
-        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG,1024*1025);//消息最大尺寸
+        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG,1024*1024);//消息最大尺寸
+        props.put(ProducerConfig.SEND_BUFFER_CONFIG,1024);
+        props.put(ProducerConfig.RECEIVE_BUFFER_CONFIG,1024);
 
         props.put(ProducerConfig.LINGER_MS_CONFIG,10000);//测试延时10s发送消息
         producer = new KafkaProducer<>(props);
