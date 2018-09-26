@@ -528,6 +528,10 @@ public class NetworkClient implements KafkaClient {
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);
         handleConnections();
+        //KafkaProducer客户端生成消息时，会调用doSend()方法，这时会先更新集群信息(调用waitOnMetadata()方法阻塞)，
+        //如果一直都更新不到集群信息，则等待60s后抛出超时异常；这时另一个线程Sender线程会在NetworkClient中发送更新
+        //请求(handleInitiateApiVersionRequests)，然后返回集群信息，并唤醒主线程，其调用路径是：
+        //NetworkClient.handleCompletedReceives()=>NetworkClient.handleCompletedMetadataResponse()=> Metadata.update()=>notifyAll()
         handleInitiateApiVersionRequests(updatedNow);
         handleTimedOutRequests(responses, updatedNow);
         completeResponses(responses);

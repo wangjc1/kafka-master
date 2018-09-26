@@ -949,7 +949,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             try {
                 // 请求服务器获取集群相关信息，会调用wait(60s)方法阻塞
                 // 在Sender线程中向服务器发送获取Meta信息请求：Sender.poll()=>NetworkClient.maybeUpdate()=>sendInternalMetadataRequest()=>wait(60s)
-                // 请求成功后，更新Meta信息并唤醒所有阻塞：Sender.poll()=>NetworkClient.handleCompletedReceives()=>NetworkClient.handleCompletedMetadataResponse()=> notifyAll()
+                // 请求成功后，更新Meta信息并唤醒所有阻塞：Sender.poll()=>NetworkClient.handleCompletedReceives()=>NetworkClient.handleCompletedMetadataResponse()=> Metadata.update()=>notifyAll()
                 metadata.awaitUpdate(version, remainingWaitMs);
             } catch (TimeoutException ex) {
                 // Rethrow with original maxWaitMs to prevent logging exception with remainingWaitMs

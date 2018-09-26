@@ -1,7 +1,6 @@
 package org.apache.kafka.my;
 
 import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
@@ -28,10 +27,10 @@ public class ProducerTest {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class.getName());
-        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG,1024*1024);//消息最大尺寸
-        props.put(ProducerConfig.SEND_BUFFER_CONFIG,1024);
-        props.put(ProducerConfig.RECEIVE_BUFFER_CONFIG,1024);
+        //props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class.getName());
+        //props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG,1024*1024);//消息最大尺寸
+        //props.put(ProducerConfig.SEND_BUFFER_CONFIG,1024);
+        //props.put(ProducerConfig.RECEIVE_BUFFER_CONFIG,1024);
 
         props.put(ProducerConfig.LINGER_MS_CONFIG,10000);//测试延时10s发送消息
         producer = new KafkaProducer<>(props);
@@ -39,7 +38,7 @@ public class ProducerTest {
 
     @Test
     public void testSyncSend() {
-        for(int messageNo=0;messageNo<10;messageNo++){
+        for(int messageNo=0;messageNo<1;messageNo++){
             String messageStr = "Message_" + messageNo;
             try {
                 producer.send(new ProducerRecord<>(topic,
