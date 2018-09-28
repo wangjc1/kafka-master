@@ -543,6 +543,24 @@ import java.util.regex.Pattern;
  * the consumer threads can hash into these queues using the TopicPartition to ensure in-order consumption and simplify
  * commit.
  */
+
+/**
+ * 消费者在消费的过程中需要记录自己消费了多少数据，即消费位置信息。在Kafka中这个位置信息有个专门的术语：位移(offset)。
+ * 很多消息引擎都把这部分信息保存在服务器端(broker端)。这样做的好处当然是实现简单，但会有三个主要的问题：
+ * 1. broker从此变成有状态的，会影响伸缩性；
+ * 2. 需要引入应答机制(acknowledgement)来确认消费成功。
+ * 3. 由于要保存很多consumer的offset信息，必然引入复杂的数据结构，造成资源浪费。
+ *    而Kafka选择了不同的方式：每个consumer group保存自己的位移信息，那么只需要简单的一个整数表示位置就够了；
+ *    同时可以引入checkpoint机制定期持久化，简化了应答机制的实现。
+ *
+ * 参考：
+ * https://www.cnblogs.com/rainwang/p/7496147.html
+ * 重分配：
+ * https://blog.csdn.net/qq_20641565/article/details/59746101
+ * https://blog.csdn.net/soaring0121/article/details/81330266
+ * Coordinator：
+ * https://www.cnblogs.com/byrhuangqiang/p/6384986.html
+ */
 public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private static final long NO_CURRENT_THREAD = -1L;
