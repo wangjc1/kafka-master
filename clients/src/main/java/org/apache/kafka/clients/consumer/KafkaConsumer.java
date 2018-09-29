@@ -555,11 +555,14 @@ import java.util.regex.Pattern;
  *
  * 参考：
  * https://www.cnblogs.com/rainwang/p/7496147.html
- * 重分配：
+ *
+ * Rebalance：
  * https://blog.csdn.net/qq_20641565/article/details/59746101
  * https://blog.csdn.net/soaring0121/article/details/81330266
+ * 
  * Coordinator：
  * https://www.cnblogs.com/byrhuangqiang/p/6384986.html
+ * https://www.jianshu.com/p/5aa8776868bb/
  */
 public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
